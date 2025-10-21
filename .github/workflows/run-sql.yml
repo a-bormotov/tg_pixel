@@ -1,4 +1,4 @@
-name: Run DB2 Probe SQL
+name: Run DB2 Probe SQL (SSH)
 
 on:
   workflow_dispatch: {}
@@ -16,15 +16,31 @@ jobs:
           python-version: "3.11"
 
       - name: Install deps
-        run: pip install psycopg2-binary==2.9.9
+        run: pip install psycopg2-binary==2.9.9 sshtunnel==0.4.0
 
-      - name: Run probe query
+      - name: Prepare SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          # (опционально) отключить strict host key checking:
+          printf "Host *\n\tStrictHostKeyChecking no\n\tUserKnownHostsFile=/dev/null\n" >> ~/.ssh/config
+
+      - name: Run probe via SSH tunnel
         env:
+          # DB2 (это адрес БД с точки зрения SSH-сервера!)
           DB2_HOST: ${{ secrets.DB2_HOST }}
           DB2_PORT: ${{ secrets.DB2_PORT }}
           DB2_NAME: ${{ secrets.DB2_NAME }}
           DB2_USER: ${{ secrets.DB2_USER }}
           DB2_PASSWORD: ${{ secrets.DB2_PASSWORD }}
+
+          # SSH
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY_PATH: /home/runner/.ssh/id_rsa
+          SSH_KEY_PASSWORD: ${{ secrets.SSH_KEY_PASSWORD }}
         run: python run_db2_probe.py
 
       - name: Commit raw_data.csv
@@ -32,5 +48,5 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add raw_data.csv
-          git commit -m "DB2 probe: update raw_data.csv [skip ci]" || echo "No changes"
+          git commit -m "DB2 SSH probe: update raw_data.csv [skip ci]" || echo "No changes"
           git push
