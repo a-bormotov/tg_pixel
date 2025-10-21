@@ -1,5 +1,5 @@
 WITH ids(id, ord) AS (
-  VALUES %s   -- сюда скрипт подставит ('id1',1),('id2',2),...
+  VALUES %s
 )
 SELECT
   ids.id AS "userId",
@@ -13,6 +13,6 @@ FROM ids
 JOIN users u
   ON u.id::text = ids.id
 WHERE
-  u."createdAt" < TIMESTAMP '2025-10-11 00:00:00'   -- фильтр по времени создания
-  AND lower(left(ids.id, 4)) <> 'line'              -- исключаем id с префиксом "line"
+  u."createdAt" < TIMESTAMP '2025-10-11 00:00:00'
+  AND lower(left(ids.id, 4)) <> 'line'
 ORDER BY ids.ord;
