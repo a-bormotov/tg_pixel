@@ -7,16 +7,13 @@ jobs:
   run-sql:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install deps
-        run: pip install psycopg2-binary==2.9.9 sshtunnel==0.4.0
+      - run: pip install psycopg2-binary==2.9.9 sshtunnel==0.4.0
 
       - name: Prepare SSH2 key (only if USE_SSH_DB2)
         if: ${{ secrets.USE_SSH_DB2 == 'true' || secrets.USE_SSH_DB2 == '1' || secrets.USE_SSH_DB2 == 'yes' }}
@@ -32,17 +29,15 @@ jobs:
 
       - name: Run probe (DB2)
         env:
-          # --- DB2 ---
           DB2_HOST: ${{ secrets.DB2_HOST }}
-          DB2_PORT: ${{ secrets.DB2_PORT }}         # можно не задавать — скрипт возьмёт 5432
+          DB2_PORT: ${{ secrets.DB2_PORT }}
           DB2_NAME: ${{ secrets.DB2_NAME }}
           DB2_USER: ${{ secrets.DB2_USER }}
           DB2_PASSWORD: ${{ secrets.DB2_PASSWORD }}
 
-          # --- SSH2 profile (используется, если USE_SSH_DB2=true/1/yes) ---
           USE_SSH_DB2: ${{ secrets.USE_SSH_DB2 }}
           SSH2_HOST: ${{ secrets.SSH2_HOST }}
-          SSH2_PORT: ${{ secrets.SSH2_PORT }}       # можно не задавать — скрипт возьмёт 22
+          SSH2_PORT: ${{ secrets.SSH2_PORT }}
           SSH2_USER: ${{ secrets.SSH2_USER }}
           SSH2_KEY_PATH: /home/runner/.ssh/id_rsa
           SSH2_KEY_PASSWORD: ${{ secrets.SSH2_KEY_PASSWORD }}
@@ -53,5 +48,5 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add raw_data.csv
-          git commit -m "DB2 probe (with SSH2 flag): update raw_data.csv [skip ci]" || echo "No changes"
+          git commit -m "DB2 probe: update raw_data.csv [skip ci]" || echo "No changes"
           git push
