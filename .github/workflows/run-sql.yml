@@ -6,6 +6,22 @@ on:
 jobs:
   run-sql:
     runs-on: ubuntu-latest
+
+    # пробрасываем секреты в env на уровне job
+    env:
+      # DB2
+      DB2_HOST: ${{ secrets.DB2_HOST }}
+      DB2_PORT: ${{ secrets.DB2_PORT }}
+      DB2_NAME: ${{ secrets.DB2_NAME }}
+      DB2_USER: ${{ secrets.DB2_USER }}
+      DB2_PASSWORD: ${{ secrets.DB2_PASSWORD }}
+      # SSH2
+      USE_SSH_DB2: ${{ secrets.USE_SSH_DB2 }}
+      SSH2_HOST: ${{ secrets.SSH2_HOST }}
+      SSH2_PORT: ${{ secrets.SSH2_PORT }}
+      SSH2_USER: ${{ secrets.SSH2_USER }}
+      SSH2_KEY_PASSWORD: ${{ secrets.SSH2_KEY_PASSWORD }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,7 +35,7 @@ jobs:
         run: pip install psycopg2-binary==2.9.9 sshtunnel==0.4.0
 
       - name: Prepare SSH2 key (only if USE_SSH_DB2)
-        if: ${{ secrets.USE_SSH_DB2 == 'true' || secrets.USE_SSH_DB2 == '1' || secrets.USE_SSH_DB2 == 'yes' }}
+        if: ${{ env.USE_SSH_DB2 == 'true' || env.USE_SSH_DB2 == '1' || env.USE_SSH_DB2 == 'yes' }}
         run: |
           if [ -z "${{ secrets.SSH2_PRIVATE_KEY }}" ]; then
             echo "ERROR: SSH2_PRIVATE_KEY is empty but USE_SSH_DB2 is set."
@@ -32,20 +48,19 @@ jobs:
 
       - name: Run probe (DB2)
         env:
-          # --- DB2 ---
-          DB2_HOST: ${{ secrets.DB2_HOST }}
-          DB2_PORT: ${{ secrets.DB2_PORT }}         # можно не задавать — скрипт возьмёт 5432
-          DB2_NAME: ${{ secrets.DB2_NAME }}
-          DB2_USER: ${{ secrets.DB2_USER }}
-          DB2_PASSWORD: ${{ secrets.DB2_PASSWORD }}
-
-          # --- SSH2 profile (используется, если USE_SSH_DB2=true/1/yes) ---
-          USE_SSH_DB2: ${{ secrets.USE_SSH_DB2 }}
-          SSH2_HOST: ${{ secrets.SSH2_HOST }}
-          SSH2_PORT: ${{ secrets.SSH2_PORT }}       # можно не задавать — скрипт возьмёт 22
-          SSH2_USER: ${{ secrets.SSH2_USER }}
+          # DB2
+          DB2_HOST: ${{ env.DB2_HOST }}
+          DB2_PORT: ${{ env.DB2_PORT }}
+          DB2_NAME: ${{ env.DB2_NAME }}
+          DB2_USER: ${{ env.DB2_USER }}
+          DB2_PASSWORD: ${{ env.DB2_PASSWORD }}
+          # SSH2
+          USE_SSH_DB2: ${{ env.USE_SSH_DB2 }}
+          SSH2_HOST: ${{ env.SSH2_HOST }}
+          SSH2_PORT: ${{ env.SSH2_PORT }}
+          SSH2_USER: ${{ env.SSH2_USER }}
           SSH2_KEY_PATH: /home/runner/.ssh/id_rsa
-          SSH2_KEY_PASSWORD: ${{ secrets.SSH2_KEY_PASSWORD }}
+          SSH2_KEY_PASSWORD: ${{ env.SSH2_KEY_PASSWORD }}
         run: python run_db2_probe.py
 
       - name: Commit raw_data.csv
@@ -53,5 +68,5 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add raw_data.csv
-          git commit -m "DB2 probe (with SSH2 flag): update raw_data.csv [skip ci]" || echo "No changes"
+          git commit -m "DB2 probe: update raw_data.csv [skip ci]" || echo "No changes"
           git push
