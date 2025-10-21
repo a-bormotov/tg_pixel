@@ -1,112 +1,110 @@
 import os, sys, csv, tempfile
 import psycopg2
+from sshtunnel import SSHTunnelForwarder
 
-try:
-    from sshtunnel import SSHTunnelForwarder
-except Exception:
-    SSHTunnelForwarder = None
+SQL_FILE = "db2_probe.sql"
+OUT_CSV  = "raw_data.csv"
 
-SQL_FILE = os.environ.get("SQL_FILE", "db2_probe.sql")
-OUT_CSV  = os.environ.get("OUTPUT_CSV", "raw_data.csv")
-TRUES = {"1","true","yes","on","y"}
+def need(name: str) -> str:
+    v = os.getenv(name, "")
+    if not v.strip():
+        print(f"[config error] Missing env: {name}", file=sys.stderr)
+        sys.exit(2)
+    return v
 
-def b(v): return (v or "").strip()
-def t(v): return b(v).lower() in TRUES
-def i(v, d): 
-    v = b(v)
-    try: return int(v) if v else d
-    except: return d
-def strip_nl(v): return v.rstrip("\r\n") if v else v
+def as_int(name: str, default: int) -> int:
+    v = os.getenv(name, "").strip()
+    if not v:
+        return default
+    try:
+        return int(v)
+    except ValueError:
+        print(f"[config error] Env {name} must be integer, got: {v!r}", file=sys.stderr)
+        sys.exit(2)
 
-def write_key_from_env(key_env) -> str | None:
-    key = os.environ.get(key_env)
-    if not b(key): return None
-    # сохранить приватный ключ во временный файл
+def clean_password(v: str) -> str:
+    # убрать случайные переводы строк/кавычки из секрета
+    v = v.replace("\r", "").replace("\n", "")
+    if len(v) >= 2 and v[0] == v[-1] and v[0] in ("'", '"'):
+        v = v[1:-1]
+    return v
+
+def write_key(key_text: str) -> str:
     fd, path = tempfile.mkstemp(prefix="id_", suffix=".key")
     with os.fdopen(fd, "w", encoding="utf-8") as f:
-        f.write(key)
+        f.write(key_text)
     os.chmod(path, 0o600)
     return path
 
-def run_sql(conn, sql):
-    with conn.cursor() as cur:
-        cur.execute(sql)
-        rows = cur.fetchall()
-        cols = [d[0] for d in cur.description]
-    with open(OUT_CSV, "w", newline="", encoding="utf-8") as f:
-        w = csv.writer(f); w.writerow(cols); w.writerows(rows)
-    print(f"[ok] wrote {OUT_CSV}: {len(rows)} rows")
-
 def main():
-    # DB2 creds (как у тебя в секретах)
-    db_host = b(os.environ.get("DB2_HOST"))
-    db_port = i(os.environ.get("DB2_PORT"), 5432)
-    db_name = b(os.environ.get("DB2_NAME"))
-    db_user = b(os.environ.get("DB2_USER"))
-    db_pass = strip_nl(os.environ.get("DB2_PASSWORD"))
+    # ---- SSH (твои секреты) ----
+    ssh_host = need("SSH_HOST")          # dbproxy.sleepagotchi.com
+    ssh_port = as_int("SSH_PORT", 22)    # 22
+    ssh_user = need("SSH_USER")          # ec2-user
+    ssh_key  = need("SSH_KEY")           # весь приватный ключ (текст)
+    ssh_key_password = os.getenv("SSH_KEY_PASSWORD")  # если ключ с паролем, иначе пусто
 
-    missing = [k for k,v in {
-        "DB2_HOST":db_host,"DB2_NAME":db_name,"DB2_USER":db_user,"DB2_PASSWORD":db_pass
-    }.items() if not v]
-    if missing:
-        print(f"[config] Missing: {', '.join(missing)}", file=sys.stderr)
+    # ---- DB2 (как видит её SSH-хост) ----
+    db_host = need("DB2_HOST")           # 10.10.0.29
+    db_port = as_int("DB2_PORT", 5432)   # 5432
+    db_name = need("DB2_NAME")           # lite
+    db_user = need("DB2_USER")           # ro_user
+    db_pass = clean_password(need("DB2_PASS"))  # -Tiv%pk,FJLDr5>_
+
+    # ---- SQL ----
+    if not os.path.exists(SQL_FILE):
+        print(f"[config error] {SQL_FILE} not found in repo root", file=sys.stderr)
         sys.exit(2)
+    with open(SQL_FILE, "r", encoding="utf-8") as f:
+        sql = f.read()
 
-    with open(SQL_FILE, "r", encoding="utf-8") as f: sql = f.read()
+    key_path = write_key(ssh_key)
 
-    use_ssh = t(os.environ.get("USE_SSH_DB2"))
-    print(f"[probe] use_ssh={use_ssh} db={db_user}@{db_host}:{db_port}/{db_name}")
+    # 1) SSH-туннель
+    print(f"[ssh] {ssh_user}@{ssh_host}:{ssh_port} -> {db_host}:{db_port}")
+    tunnel = SSHTunnelForwarder(
+        (ssh_host, ssh_port),
+        ssh_username=ssh_user,
+        ssh_pkey=key_path,
+        ssh_private_key_password=ssh_key_password,
+        remote_bind_address=(db_host, db_port),
+    )
+    tunnel.start()
+    print(f"[ssh] tunnel up on local_port={tunnel.local_bind_port}")
 
-    if use_ssh:
-        if SSHTunnelForwarder is None:
-            print("[config] sshtunnel not installed", file=sys.stderr); sys.exit(2)
-        ssh_host = b(os.environ.get("SSH2_HOST"))
-        ssh_port = i(os.environ.get("SSH2_PORT"), 22)
-        ssh_user = b(os.environ.get("SSH2_USER"))
-        # ключ из ENV (как в твоих секретах) -> во временный файл:
-        ssh_key_path = write_key_from_env("SSH2_PRIVATE_KEY")
-        if not all([ssh_host, ssh_user, ssh_key_path]):
-            print("[config] SSH2_HOST/SSH2_USER/SSH2_PRIVATE_KEY required", file=sys.stderr)
-            sys.exit(2)
-        ssh_pass = os.environ.get("SSH2_KEY_PASSWORD")  # если нужен
-
-        tunnel = SSHTunnelForwarder(
-            (ssh_host, ssh_port),
-            ssh_username=ssh_user,
-            ssh_pkey=ssh_key_path,
-            ssh_private_key_password=ssh_pass,
-            remote_bind_address=(db_host, db_port),
-        )
-        tunnel.start()
-        print(f"[probe] ssh up on local_port={tunnel.local_bind_port}")
-        try:
-            conn = psycopg2.connect(
-                host="127.0.0.1",
-                port=tunnel.local_bind_port,
-                dbname=db_name,
-                user=db_user,
-                password=db_pass,
-                application_name="db2-probe-ssh",
-            )
-            try:
-                with conn.cursor() as cur:
-                    cur.execute("SELECT 1;"); cur.fetchone()
-                run_sql(conn, sql)
-            finally:
-                conn.close()
-        finally:
-            tunnel.stop()
-    else:
+    try:
+        # 2) Подключение к Postgres через туннель
+        print(f"[db] connect 127.0.0.1:{tunnel.local_bind_port} db={db_name} user={db_user}")
         conn = psycopg2.connect(
-            host=db_host, port=db_port, dbname=db_name, user=db_user, password=db_pass,
-            application_name="db2-probe-direct",
+            host="127.0.0.1",
+            port=tunnel.local_bind_port,
+            dbname=db_name,
+            user=db_user,
+            password=db_pass,
+            application_name="probe-db2-ssh",
         )
         try:
+            # 2a) быстрая проверка соединения
             with conn.cursor() as cur:
-                cur.execute("SELECT 1;"); cur.fetchone()
-            run_sql(conn, sql)
+                cur.execute("SELECT 1;")
+                print(f"[db] SELECT 1 -> {cur.fetchone()[0]} (ok)")
+
+            # 3) тестовый SQL и CSV
+            with conn.cursor() as cur:
+                cur.execute(sql)
+                rows = cur.fetchall()
+                cols = [d[0] for d in cur.description]
+
+            with open(OUT_CSV, "w", newline="", encoding="utf-8") as f:
+                w = csv.writer(f)
+                w.writerow(cols)
+                w.writerows(rows)
+
+            print(f"[ok] wrote {OUT_CSV} ({len(rows)} rows)")
         finally:
             conn.close()
+    finally:
+        tunnel.stop()
 
 if __name__ == "__main__":
     main()
