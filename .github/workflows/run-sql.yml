@@ -2,6 +2,8 @@ name: Run data.sql on DB2, enrich from DB1, export CSVs
 
 on:
   workflow_dispatch: {}
+  schedule:
+    - cron: "55 * * * *"   # каждый час, в 55 минут UTC
 
 permissions:
   contents: write
