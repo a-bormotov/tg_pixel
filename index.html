@@ -150,6 +150,7 @@ tbody tr:nth-child(3) { background:#473431; color:#fff; font-weight:bold; }
 </div>
 
 <script>
+<script>
 // --- Helpers ---
 function detectDelimiter(firstLine){
   const candidates = [',','\t',';'];
@@ -249,8 +250,8 @@ async function loadPixelMap(){
   let lastModifiedMs = null;
 
   try{
-    // Last-Modified
-    const head = await fetch('./result1_data.csv', { method: 'HEAD', cache: 'no-store' }).catch(()=>null);
+    // Last-Modified (исправлено: result_data.csv)
+    const head = await fetch('./result_data.csv', { method: 'HEAD', cache: 'no-store' }).catch(()=>null);
     if (head && head.ok){
       const lm = head.headers.get('last-modified');
       if (lm){
@@ -282,44 +283,40 @@ async function loadPixelMap(){
     const has = (name) => Object.prototype.hasOwnProperty.call(idx, name);
     const gi = (row, name) => row[idx[name]];
 
-    let data = rows.slice(1).map(r=>{
-      const score = has('score') ? toNumber(gi(r,'score')) : 0;
-      const purple = has('purple') ? toNumber(gi(r,'purple')) : 0;
-      const legendaries = has('legendaries') ? toNumber(gi(r,'legendaries')) : 0;
+    // ожидаем: Rank, Username, Score, Green, Cards, NFT, PIXEL, USD (ref.)
+    const data = rows.slice(1).map(r=>{
       return {
+        rank: has('rank') ? toNumber(gi(r,'rank')) : 0,
         username: has('username') ? gi(r,'username') : '',
-        score,
-        purple,
-        legendaries
+        score: has('score') ? toNumber(gi(r,'score')) : 0,
+        green: has('green') ? toNumber(gi(r,'green')) : 0,
+        cards: has('cards') ? toNumber(gi(r,'cards')) : 0,
+        nft: has('nft') ? gi(r,'nft') : '-',
+        pixelCsv: has('pixel') ? toNumber(gi(r,'pixel')) : 0,
+        usdCsv: has('usd (ref.)') ? toNumber(gi(r,'usd (ref.)')) : 0
       };
     });
 
-    // Сортировка: score → purple → legendaries → username
-    data.sort((a,b)=>
-      b.score - a.score ||
-      b.purple - a.purple ||
-      b.legendaries - a.legendaries ||
-      String(a.username).localeCompare(String(b.username))
-    );
+    // Не пересортировываем — используем Rank/порядок из CSV.
+    // Но на всякий случай упорядочим по Rank по возрастанию:
+    data.sort((a,b)=> a.rank - b.rank);
 
-    // TOP-3000 и ранжирование
-    data = data.slice(0, 3000);
-    data.forEach((row, i)=> row.rank = i+1);
+    // TOP-3000 (если CSV длиннее)
+    const limited = data.slice(0, 3000);
 
     // Рендер
     const frag = document.createDocumentFragment();
-    for (const row of data){
-      const prize = (row.rank <= 1000 && rewards[row.rank])
-        ? rewards[row.rank]
-        : { pixel: 0, usd: 0 };
+    for (const row of limited){
+      const prize = rewards[row.rank] || { pixel: row.pixelCsv, usd: row.usdCsv };
 
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${row.rank}</td>
         <td>${escapeHTML(row.username)}</td>
         <td>${fmtInt(row.score)}</td>
-        <td>${fmtInt(row.purple)}</td>
-        <td>${fmtInt(row.legendaries)}</td>
+        <td>${fmtInt(row.green)}</td>
+        <td>${fmtInt(row.cards)}</td>
+        <td>${escapeHTML(row.nft ?? '-')}</td>
         <td>${fmtInt(prize.pixel)}</td>
         <td>${fmtUSD(prize.usd)}</td>
       `;
@@ -328,17 +325,14 @@ async function loadPixelMap(){
     tbody.innerHTML = '';
     tbody.appendChild(frag);
 
-    qualifyingEl.textContent = fmtInt(data.length);
+    qualifyingEl.textContent = fmtInt(limited.length);
 
     // Last Updated
     const ts = lastModifiedMs ?? Date.now();
-    const rel = timeAgo(ts);
     const icon = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="6" x2="12" y2="12"/><line x1="12" y1="12" x2="16" y2="14"/></svg>';
-    lastEl.innerHTML = `${icon} Last Updated: ${rel}`;
-    setInterval(()=>{
-      const relNow = timeAgo(ts);
-      lastEl.innerHTML = `${icon} Last Updated: ${relNow}`;
-    }, 60_000);
+    const renderTime = ()=> lastEl.innerHTML = `${icon} Last Updated: ${timeAgo(ts)}`;
+    renderTime();
+    setInterval(renderTime, 60_000);
 
   } catch(e){
     console.error(e);
@@ -360,6 +354,8 @@ async function loadPixelMap(){
     }
   });
 })();
+</script>
+
 </script>
 </div>
 
