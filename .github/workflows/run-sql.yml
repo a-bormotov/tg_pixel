@@ -1,4 +1,4 @@
-name: Probe DB2 via SSH and export CSV
+name: Run data.sql on DB2 via SSH and export CSV
 
 on:
   workflow_dispatch: {}
@@ -7,7 +7,7 @@ permissions:
   contents: write
 
 jobs:
-  probe:
+  run-query:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -27,22 +27,26 @@ jobs:
           # совместимые версии для sshtunnel/paramiko
           pip install "psycopg2-binary==2.9.9" "sshtunnel==0.4.0" "paramiko==2.12.0"
 
-      - name: Run probe
+      - name: Run query (data.sql -> raw_data.csv)
         env:
-          # ---- SSH (твои имена секретов) ----
+          # ---- SSH ----
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
           SSH_USER: ${{ secrets.SSH_USER }}
-          SSH_KEY:  ${{ secrets.SSH_KEY }}            # полный приватный ключ как текст
+          SSH_KEY:  ${{ secrets.SSH_KEY }}
           SSH_KEY_PASSWORD: ${{ secrets.SSH_KEY_PASSWORD }}
 
-          # ---- DB2 (твои имена секретов) ----
+          # ---- DB2 ----
           DB2_HOST: ${{ secrets.DB2_HOST }}
           DB2_PORT: ${{ secrets.DB2_PORT }}
           DB2_NAME: ${{ secrets.DB2_NAME }}
           DB2_USER: ${{ secrets.DB2_USER }}
           DB2_PASS: ${{ secrets.DB2_PASS }}
-        run: python run_db2_probe.py
+
+          # ---- файлы ----
+          SQL_FILE: data.sql
+          OUTPUT_CSV: raw_data.csv
+        run: python run_query.py
 
       - name: Commit raw_data.csv
         run: |
@@ -54,6 +58,6 @@ jobs:
             echo "No changes — skip commit/push."
             exit 0
           fi
-          git commit -m "Probe: update raw_data.csv [skip ci]"
+          git commit -m "Update raw_data.csv [skip ci]"
           git pull --rebase --autostash origin "${{ github.ref_name }}"
           git push origin HEAD:"${{ github.ref_name }}"
