@@ -222,9 +222,9 @@ def main():
         w = csv.writer(f)
         w.writerow(["Rank","Username","Score","Green","Cards","NFT","PIXEL","USD (ref.)"])
         for i, (username, score, green, cards, uid, _, mult) in enumerate(records, start=1):
-            # В колонку NFT кладём сам мультипликатор для наглядности (если не хочешь — замени на "-")
-            nft_col = f"{mult:.1f}" if mult != 1.0 else "-"
+            nft_col = f"{mult:.1f}" if uid in nft_mult else "-"
             w.writerow([i, username, score, green, cards, nft_col, "-", "-"])
+    
 
     print(f"[4] wrote {RESULT_CSV}: {len(records)} rows (top {TOP_N}, NFT multipliers applied)")
 
