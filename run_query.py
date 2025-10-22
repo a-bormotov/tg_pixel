@@ -6,8 +6,9 @@ SQL_FILE       = os.environ.get("SQL_FILE", "data.sql")
 USER_SQL_FILE  = os.environ.get("USER_SQL_FILE", "user_data.sql")
 RAW_CSV        = os.environ.get("OUTPUT_CSV", "raw_data.csv")
 RESULT_CSV     = "result_data.csv"
-BLACKLIST_FILE = "black_list.csv"
-TOP_N          = int(os.environ.get("TOP_N", "3000"))   # <-- лимит топ-игроков
+BLACKLIST_FILE = "black_list.csv"   # столбец: userid
+NFT_FILE       = "nft_data.csv"     # столбцы: userId, multiplier
+TOP_N          = int(os.environ.get("TOP_N", "3000"))
 
 # ---------- helpers ----------
 def need(name: str) -> str:
@@ -141,6 +142,30 @@ def main():
         print("[stop] no players left; wrote empty result_data.csv")
         return
 
+    # ===== 2.5) NFT multipliers (из файла) =====
+    nft_mult = {}  # userId -> float multiplier
+    if os.path.exists(NFT_FILE):
+        try:
+            with open(NFT_FILE, "r", encoding="utf-8") as f:
+                rdr = csv.DictReader(f)
+                for row in rdr:
+                    uid = (row.get("userId") or row.get("userid") or "").strip()
+                    m_raw = (row.get("multiplier") or "").strip()
+                    if not uid or not m_raw:
+                        continue
+                    try:
+                        m = float(m_raw)
+                        if m <= 0:  # защитимся от мусора
+                            continue
+                        nft_mult[uid] = m
+                    except:
+                        continue
+            print(f"[2.5] nft_data loaded: {len(nft_mult)} multipliers")
+        except Exception as e:
+            print(f"[warn] failed to read {NFT_FILE}: {e}")
+    else:
+        print("[info] nft_data.csv not found; NFT multiplier defaults to 1.0")
+
     # ===== 3) DB1 -> usernames =====
     if "{IDS}" in sql_user_tpl:
         id_list = ",".join(f"'{esc_sql_str(i)}'" for i in filtered_ids)
@@ -166,7 +191,7 @@ def main():
     id_to_name = {str(r[c_uid]): r[c_unm] for r in rows1}
     ord_map = {str(r[c_uid]): r[c_ord] for r in rows1 if c_ord is not None}
 
-    # ===== 4) Сборка result_data.csv =====
+    # ===== 4) Сборка result_data.csv (применяем NFT multiplier ДО сортировки и TOP_N) =====
     def idx(name):
         try: return [c.lower() for c in cols2].index(name)
         except ValueError: return None
@@ -177,25 +202,31 @@ def main():
     records = []
     for r in rows2:
         uid = str(r[uid_idx])
-        if uid in blacklist: continue
+        if uid in blacklist:  # на всякий случай
+            continue
         username = id_to_name.get(uid, uid)
-        score = float(r[idx_score]) if idx_score is not None and r[idx_score] is not None else 0.0
+        base_score = float(r[idx_score]) if idx_score is not None and r[idx_score] is not None else 0.0
         green = int(r[idx_green]) if idx_green is not None and r[idx_green] is not None else 0
         cards = int(r[idx_cards]) if idx_cards is not None and r[idx_cards] is not None else 0
+        mult = float(nft_mult.get(uid, 1.0))
+        final_score = base_score * mult   # <--- применяем NFT мультипликатор здесь
         order_key = ord_map.get(uid, 0)
-        records.append((username, score, green, cards, uid, order_key))
+        records.append((username, final_score, green, cards, uid, order_key, mult))
 
+    # сортировка по уже скорректированному score
     records.sort(key=lambda x: (x[1], x[2], x[3], x[5]), reverse=True)
-    # <-- берём только TOP_N игроков
+    # TOP_N после применения мультипликатора
     records = records[:TOP_N]
 
     with open(RESULT_CSV, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["Rank","Username","Score","Green","Cards","NFT","PIXEL","USD (ref.)"])
-        for i, (username, score, green, cards, uid, _) in enumerate(records, start=1):
-            w.writerow([i, username, score, green, cards, "-", "-", "-"])
+        for i, (username, score, green, cards, uid, _, mult) in enumerate(records, start=1):
+            # В колонку NFT кладём сам мультипликатор для наглядности (если не хочешь — замени на "-")
+            nft_col = f"{mult:.1f}" if mult != 1.0 else "-"
+            w.writerow([i, username, score, green, cards, nft_col, "-", "-"])
 
-    print(f"[4] wrote {RESULT_CSV}: {len(records)} rows (top {TOP_N}, sorted by Score desc)")
+    print(f"[4] wrote {RESULT_CSV}: {len(records)} rows (top {TOP_N}, NFT multipliers applied)")
 
 if __name__ == "__main__":
     main()
