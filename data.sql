@@ -8,34 +8,70 @@ WITH ewin AS (
       'ClaimChallengesAction',
       'UnlockChallengeAction',
       'SpendGachaAction',
-      'WatchAdsPostHookAction'   -- добавили
+      'WatchAdsPostHookAction'
     )
 ),
--- Сумма greenStones из разных путей:
--- ClaimChallengesAction:    payload.output.greenStones.amount
--- UnlockChallengeAction:    payload.output.rewards.greenStones.amount
--- WatchAdsPostHookAction:   payload.input.rewards.greenStones.amount
-green AS (
+/* 1) Claim/Unlock — green */
+green_claim_unlock AS (
   SELECT
     e."userId",
     SUM(
-      /* Claim/Unlock */
-      CASE WHEN e."name" IN ('ClaimChallengesAction','UnlockChallengeAction') THEN
-        COALESCE(NULLIF(e.payload::jsonb #>> '{output,greenStones,amount}','')::bigint, 0) +
-        COALESCE(NULLIF(e.payload::jsonb #>> '{output,rewards,greenStones,amount}','')::bigint, 0)
-      ELSE 0 END
-      +
-      /* WatchAdsPostHookAction (rewards может отсутствовать) */
-      CASE WHEN e."name" = 'WatchAdsPostHookAction' THEN
-        COALESCE(NULLIF(e.payload::jsonb #>> '{input,rewards,greenStones,amount}','')::bigint, 0)
-      ELSE 0 END
-    ) AS green
+      COALESCE(NULLIF(e.payload::jsonb #>> '{output,greenStones,amount}','')::bigint, 0) +
+      COALESCE(NULLIF(e.payload::jsonb #>> '{output,rewards,greenStones,amount}','')::bigint, 0)
+    ) AS amt
   FROM ewin e
-  WHERE e."name" IN ('ClaimChallengesAction','UnlockChallengeAction','WatchAdsPostHookAction')
+  WHERE e."name" IN ('ClaimChallengesAction','UnlockChallengeAction')
   GROUP BY e."userId"
 ),
--- Карточки из SpendGachaAction: +1% за каждую карточку,
--- если её heroType входит в список ниже.
+/* 2) WatchAdsPostHookAction — не более 5 подряд одинаковых amt */
+wa_raw AS (
+  SELECT
+    e."userId",
+    e."createdAt",
+    COALESCE(NULLIF(e.payload::jsonb #>> '{input,rewards,greenStones,amount}','')::bigint, 0) AS amt
+  FROM ewin e
+  WHERE e."name" = 'WatchAdsPostHookAction'
+),
+wa_grouped AS (
+  SELECT
+    w.*,
+    CASE
+      WHEN w.amt = LAG(w.amt) OVER (PARTITION BY w."userId" ORDER BY w."createdAt")
+        THEN 0 ELSE 1
+    END AS is_new_group
+  FROM wa_raw w
+),
+wa_with_grp AS (
+  SELECT
+    g.*,
+    SUM(is_new_group) OVER (PARTITION BY g."userId" ORDER BY g."createdAt") AS grp
+  FROM wa_grouped g
+),
+wa_capped AS (
+  SELECT *
+  FROM (
+    SELECT
+      w.*,
+      ROW_NUMBER() OVER (PARTITION BY w."userId", w.grp ORDER BY w."createdAt") AS rn
+    FROM wa_with_grp w
+  ) z
+  WHERE z.rn <= 5
+),
+green_watchads AS (
+  SELECT "userId", SUM(amt) AS amt
+  FROM wa_capped
+  GROUP BY "userId"
+),
+/* 3) Общая сумма green */
+green AS (
+  SELECT
+    COALESCE(c."userId", a."userId") AS "userId",
+    COALESCE(c.amt, 0) + COALESCE(a.amt, 0) AS green
+  FROM green_claim_unlock c
+  FULL JOIN green_watchads a
+    ON c."userId" = a."userId"
+),
+/* 4) Гача-герои (+1% за каждый из списка) */
 heroes AS (
   SELECT
     e."userId",
