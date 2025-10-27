@@ -104,8 +104,10 @@ def main():
         if not os.path.exists(f):
             print(f"[config error] Missing SQL file: {f}", file=sys.stderr)
             sys.exit(2)
-    with open(SQL_FILE, "r", encoding="utf-8") as f:  sql_data = f.read()
-    with open(USER_SQL_FILE, "r", encoding="utf-8") as f: sql_user_tpl = f.read()
+    with open(SQL_FILE, "r", encoding="utf-8") as f:
+        sql_data = f.read()
+    with open(USER_SQL_FILE, "r", encoding="utf-8") as f:
+        sql_user_tpl = f.read()
 
     # ===== 1) DB2 -> raw_data.csv =====
     print("[1] Query DB2 (events)...")
@@ -115,14 +117,17 @@ def main():
         sql_data
     )
     with open(RAW_CSV, "w", newline="", encoding="utf-8") as f:
-        w = csv.writer(f); w.writerow(cols2); w.writerows(rows2)
+        w = csv.writer(f)
+        w.writerow(cols2)
+        w.writerows(rows2)
     print(f"[1] wrote {RAW_CSV}: {len(rows2)} rows")
 
     # userId index
     try:
         uid_idx = [c.lower() for c in cols2].index("userid")
     except ValueError:
-        print("[error] Column 'userId' not found.", file=sys.stderr); sys.exit(2)
+        print("[error] Column 'userId' not found.", file=sys.stderr)
+        sys.exit(2)
     user_ids = [str(r[uid_idx]) for r in rows2]
 
     # ===== 2) Blacklist =====
@@ -132,18 +137,19 @@ def main():
             rdr = csv.DictReader(f)
             for row in rdr:
                 v = (row.get("userid") or "").strip()
-                if v: blacklist.add(v)
+                if v:
+                    blacklist.add(v)
     filtered_ids = [u for u in user_ids if u not in blacklist]
     print(f"[2] blacklist filtered: {len(user_ids)} -> {len(filtered_ids)}")
 
     if not filtered_ids:
         with open(RESULT_CSV, "w", newline="", encoding="utf-8") as f:
-            csv.writer(f).writerow(["Rank","Username","Score","Green","Cards","NFT","PIXEL","USD (ref.)"])
+            csv.writer(f).writerow(["Rank","Username","Score","Green","Cards","NFT","PIXEL","USD (ref.)","userId"])
         print("[stop] no players left; wrote empty result_data.csv")
         return
 
-    # ===== 2.5) NFT multipliers (из файла) =====
-    nft_mult = {}  # userId -> float multiplier
+    # ===== 2.5) NFT multipliers =====
+    nft_mult = {}
     if os.path.exists(NFT_FILE):
         try:
             with open(NFT_FILE, "r", encoding="utf-8") as f:
@@ -155,10 +161,10 @@ def main():
                         continue
                     try:
                         m = float(m_raw)
-                        if m <= 0:  # защитимся от мусора
+                        if m <= 0:
                             continue
                         nft_mult[uid] = m
-                    except:
+                    except Exception:
                         continue
             print(f"[2.5] nft_data loaded: {len(nft_mult)} multipliers")
         except Exception as e:
@@ -171,7 +177,10 @@ def main():
         id_list = ",".join(f"'{esc_sql_str(i)}'" for i in filtered_ids)
         sql_user_final = sql_user_tpl.replace("{IDS}", id_list)
     elif "%s" in sql_user_tpl:
-        values_rows = ",".join(f"('{esc_sql_str(uid)}',{ord_})" for ord_, uid in enumerate(filtered_ids, start=1))
+        values_rows = ",".join(
+            f"('{esc_sql_str(uid)}',{ord_})"
+            for ord_, uid in enumerate(filtered_ids, start=1)
+        )
         sql_user_final = sql_user_tpl % values_rows
     else:
         print("[config error] user_data.sql must contain {IDS} or %s", file=sys.stderr)
@@ -191,10 +200,13 @@ def main():
     id_to_name = {str(r[c_uid]): r[c_unm] for r in rows1}
     ord_map = {str(r[c_uid]): r[c_ord] for r in rows1 if c_ord is not None}
 
-    # ===== 4) Сборка result_data.csv (применяем NFT multiplier ДО сортировки и TOP_N) =====
+    # ===== 4) Build result_data.csv =====
     def idx(name):
-        try: return [c.lower() for c in cols2].index(name)
-        except ValueError: return None
+        try:
+            return [c.lower() for c in cols2].index(name)
+        except ValueError:
+            return None
+
     idx_score = idx("score")
     idx_green = idx("green")
     idx_cards = idx("heroesmatched")
@@ -202,31 +214,29 @@ def main():
     records = []
     for r in rows2:
         uid = str(r[uid_idx])
-        if uid in blacklist:  # на всякий случай
+        if uid in blacklist:
             continue
         username = id_to_name.get(uid, uid)
         base_score = float(r[idx_score]) if idx_score is not None and r[idx_score] is not None else 0.0
         green = int(r[idx_green]) if idx_green is not None and r[idx_green] is not None else 0
         cards = int(r[idx_cards]) if idx_cards is not None and r[idx_cards] is not None else 0
         mult = float(nft_mult.get(uid, 1.0))
-        final_score = base_score * mult   # <--- применяем NFT мультипликатор здесь
+        final_score = base_score * mult
         order_key = ord_map.get(uid, 0)
         records.append((username, final_score, green, cards, uid, order_key, mult))
 
-    # сортировка по уже скорректированному score
+    # sort by adjusted score, then green, then cards, then ord
     records.sort(key=lambda x: (x[1], x[2], x[3], x[5]), reverse=True)
-    # TOP_N после применения мультипликатора
     records = records[:TOP_N]
 
+    # write CSV (with userId at the end)
     with open(RESULT_CSV, "w", newline="", encoding="utf-8") as f:
-    w = csv.writer(f)
-    # добавили userId в конец заголовка
-    w.writerow(["Rank","Username","Score","Green","Cards","NFT","PIXEL","USD (ref.)","userId"])
-    for i, (username, score, green, cards, uid, _, mult) in enumerate(records, start=1):
-        nft_col = f"{mult:.1f}" if uid in nft_mult else "-"
-        # добавили uid в конец строки
-        w.writerow([i, username, score, green, cards, nft_col, "-", "-", uid])
-    
+        w = csv.writer(f)
+        w.writerow(["Rank","Username","Score","Green","Cards","NFT","PIXEL","USD (ref.)","userId"])
+        for i, (username, score, green, cards, uid, _, mult) in enumerate(records, start=1):
+            nft_col = f"{mult:.1f}" if uid in nft_mult else "-"
+            w.writerow([i, username, score, green, cards, nft_col, "-", "-", uid])
+
     print(f"[4] wrote {RESULT_CSV}: {len(records)} rows (top {TOP_N}, NFT multipliers applied)")
 
 if __name__ == "__main__":
