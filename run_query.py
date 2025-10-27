@@ -219,15 +219,14 @@ def main():
     records = records[:TOP_N]
 
     with open(RESULT_CSV, "w", newline="", encoding="utf-8") as f:
-       w = csv.writer(f)
-         добавили userId в конец заголовка
-        .writerow(["Rank","Username","Score","Green","Cards","NFT","PIXEL","USD (ref.)","userId"])
-        or i, (username, score, green, cards, uid, _, mult) in enumerate(records, start=1):
-           nft_col = f"{mult:.1f}" if uid in nft_mult else "-"
-             добавили uid в конец строки
-            .writerow([i, username, score, green, cards, nft_col, "-", "-", uid])
+    w = csv.writer(f)
+    # добавили userId в конец заголовка
+    w.writerow(["Rank","Username","Score","Green","Cards","NFT","PIXEL","USD (ref.)","userId"])
+    for i, (username, score, green, cards, uid, _, mult) in enumerate(records, start=1):
+        nft_col = f"{mult:.1f}" if uid in nft_mult else "-"
+        # добавили uid в конец строки
+        w.writerow([i, username, score, green, cards, nft_col, "-", "-", uid])
     
-
     print(f"[4] wrote {RESULT_CSV}: {len(records)} rows (top {TOP_N}, NFT multipliers applied)")
 
 if __name__ == "__main__":
