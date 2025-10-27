@@ -4,6 +4,7 @@ WITH ewin AS (
   FROM events
   WHERE "createdAt" >= TIMESTAMPTZ '2025-10-21 16:00:00+00'
     AND "createdAt" <  TIMESTAMPTZ '2025-10-29 16:00:00+00'
+	AND lower(left("userId", 4)) <> 'line'
     AND "name" IN (
       'ClaimChallengesAction',
       'UnlockChallengeAction',
