@@ -1,18 +1,28 @@
--- data.sql — окно времени подставь при необходимости
-WITH ewin AS (
+-- data.sql — окно времени
+WITH
+win AS (
+  SELECT
+    TIMESTAMPTZ '2025-10-21 16:00:00+00' AS win_start,
+    TIMESTAMPTZ '2025-10-29 16:00:00+00' AS win_end
+),
+
+/* События в окне */
+ewin AS (
   SELECT *
-  FROM events
-  WHERE "createdAt" >= TIMESTAMPTZ '2025-10-21 16:00:00+00'
-    AND "createdAt" <  TIMESTAMPTZ '2025-10-29 16:00:00+00'
-	AND lower(left("userId", 4)) <> 'line'
-    AND "name" IN (
+  FROM events e, win
+  WHERE e."createdAt" >= win.win_start
+    AND e."createdAt" <  win.win_end
+    AND lower(left(e."userId", 4)) <> 'line'   -- отсечь line*
+    -- AND e."userId" = '988810706'           -- для точечного теста
+    AND e."name" IN (
       'ClaimChallengesAction',
       'UnlockChallengeAction',
       'SpendGachaAction',
       'WatchAdsPostHookAction'
     )
 ),
-/* 1) Claim/Unlock — green */
+
+/* 1) Claim/Unlock — прямые green */
 green_claim_unlock AS (
   SELECT
     e."userId",
@@ -24,8 +34,9 @@ green_claim_unlock AS (
   WHERE e."name" IN ('ClaimChallengesAction','UnlockChallengeAction')
   GROUP BY e."userId"
 ),
-/* 2) WatchAdsPostHookAction — не более 5 подряд одинаковых amt */
-wa_raw AS (
+
+/* 2) Реклама (суммы green из payload) */
+ads_only AS (
   SELECT
     e."userId",
     e."createdAt",
@@ -33,46 +44,92 @@ wa_raw AS (
   FROM ewin e
   WHERE e."name" = 'WatchAdsPostHookAction'
 ),
-wa_grouped AS (
+
+/* 3) Ограничим историю подписок только нужными игроками */
+uids AS ( SELECT DISTINCT "userId" FROM ads_only ),
+
+/* 4) Интервалы подписки из "vipHistory": [from, next_from) */
+vip_ranges AS (
   SELECT
-    w.*,
-    CASE
-      WHEN w.amt = LAG(w.amt) OVER (PARTITION BY w."userId" ORDER BY w."createdAt")
-        THEN 0 ELSE 1
-    END AS is_new_group
-  FROM wa_raw w
+    v."userId",
+    v."vipLevel",
+    v."from" AS from_ts,
+    LEAD(v."from") OVER (PARTITION BY v."userId" ORDER BY v."from") AS to_ts
+  FROM "vipHistory" v
+  JOIN uids u ON u."userId" = v."userId"
 ),
-wa_with_grp AS (
+
+/* 5) Назначим каждому показу актуальный vipLevel (или vip0) */
+ads_with_level AS (
   SELECT
-    g.*,
-    SUM(is_new_group) OVER (PARTITION BY g."userId" ORDER BY g."createdAt") AS grp
-  FROM wa_grouped g
+    a."userId",
+    a."createdAt",
+    a.amt,
+    COALESCE(r."vipLevel", 'vip0') AS vip_level
+  FROM ads_only a
+  LEFT JOIN vip_ranges r
+    ON  r."userId" = a."userId"
+    AND a."createdAt" >= r.from_ts
+    AND (r.to_ts IS NULL OR a."createdAt" < r.to_ts)
 ),
-wa_capped AS (
-  SELECT *
-  FROM (
-    SELECT
-      w.*,
-      ROW_NUMBER() OVER (PARTITION BY w."userId", w.grp ORDER BY w."createdAt") AS rn
-    FROM wa_with_grp w
-  ) z
-  WHERE z.rn <= 5
+
+/* 6) Порог на момент показа */
+ads_with_threshold AS (
+  SELECT
+    "userId",
+    "createdAt",
+    amt,
+    CASE vip_level
+      WHEN 'vip3' THEN 1
+      WHEN 'vip2' THEN 2
+      WHEN 'vip1' THEN 3
+      ELSE 5
+    END AS threshold
+  FROM ads_with_level
 ),
+
+/* 7) Серии подряд одинаковых (amt, threshold) */
+ads_series AS (
+  SELECT
+    a.*,
+    (ROW_NUMBER() OVER (PARTITION BY "userId" ORDER BY "createdAt")
+     - ROW_NUMBER() OVER (PARTITION BY "userId", amt, threshold ORDER BY "createdAt")) AS grp
+  FROM ads_with_threshold a
+),
+
+/* 8) Агрегируем серию: считаем её длину и параметры */
+ads_credits AS (
+  SELECT
+    "userId",
+    grp,
+    MAX(amt)       AS amt,
+    MAX(threshold) AS threshold,
+    COUNT(*)       AS cnt
+  FROM ads_series
+  GROUP BY "userId", grp
+),
+
+/* 9) Кредиты за рекламу: максимум ОДИН кредит на серию */
 green_watchads AS (
-  SELECT "userId", SUM(amt) AS amt
-  FROM wa_capped
+  SELECT
+    "userId",
+    SUM(CASE WHEN cnt >= threshold THEN amt ELSE 0 END)::bigint AS amt
+  FROM ads_credits
   GROUP BY "userId"
 ),
-/* 3) Общая сумма green */
+
+/* 10) Общая сумма green */
 green AS (
-  SELECT
-    COALESCE(c."userId", a."userId") AS "userId",
-    COALESCE(c.amt, 0) + COALESCE(a.amt, 0) AS green
-  FROM green_claim_unlock c
-  FULL JOIN green_watchads a
-    ON c."userId" = a."userId"
+  SELECT "userId", SUM(amt)::bigint AS green
+  FROM (
+    SELECT "userId", amt FROM green_claim_unlock
+    UNION ALL
+    SELECT "userId", amt FROM green_watchads
+  ) x
+  GROUP BY "userId"
 ),
-/* 4) Гача-герои (+1% за каждый из списка) */
+
+/* 11) Гача-герои: +1% за каждую карту из списка */
 heroes AS (
   SELECT
     e."userId",
@@ -95,6 +152,7 @@ heroes AS (
   WHERE e."name" = 'SpendGachaAction'
   GROUP BY e."userId"
 )
+
 SELECT
   COALESCE(g."userId", h."userId")                                              AS "userId",
   (COALESCE(g.green, 0)::numeric) * (1 + COALESCE(h.heroes_matched, 0) * 0.01)  AS score,
