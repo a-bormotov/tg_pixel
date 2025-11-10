@@ -2,7 +2,7 @@
 WITH
 win AS (
   SELECT
-    TIMESTAMPTZ '2025-11-08 17:00:00+00' AS win_start,
+    TIMESTAMPTZ '2025-11-10 17:00:00+00' AS win_start,
     TIMESTAMPTZ '2025-11-17 17:00:00+00' AS win_end
 ),
 
