@@ -2,8 +2,8 @@
 WITH
 win AS (
   SELECT
-    TIMESTAMPTZ '2025-11-10 17:00:00+00' AS win_start,
-    TIMESTAMPTZ '2025-11-17 17:00:00+00' AS win_end
+    TIMESTAMPTZ '2025-11-10 16:00:00+00' AS win_start,
+    TIMESTAMPTZ '2025-11-17 16:00:00+00' AS win_end
 ),
 
 /* События в окне */
