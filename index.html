@@ -250,7 +250,7 @@ async function loadPixelMap(){
 
   try{
     // Last-Modified (исправлено: result_data.csv)
-    const head = await fetch('./result_data.csv', { method: 'HEAD', cache: 'no-store' }).catch(()=>null);
+    const head = await fetch('./final_data.csv', { method: 'HEAD', cache: 'no-store' }).catch(()=>null);
     if (head && head.ok){
       const lm = head.headers.get('last-modified');
       if (lm){
@@ -261,7 +261,7 @@ async function loadPixelMap(){
 
     // Загружаем leaderboard и призы
     const [{ text: csvText, headers }, rewards] = await Promise.all([
-      loadCSV('./result_data.csv'),
+      loadCSV('./final_data.csv'),
       loadPixelMap()
     ]);
 
