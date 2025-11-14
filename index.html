@@ -11,6 +11,7 @@
     background: #1d2739;
     color: #91a0b5;
     text-align: center;
+    font-size: 14px;
   }
   .container { padding: 20px; max-width: 1000px; margin: 0 auto; }
   .top-info { background: #312957; padding: 10px; margin-bottom: 15px; font-size: 14px; color: #bf83fb; }
@@ -58,6 +59,8 @@
   /* -------- NFT BLOCK STYLES -------- */
   .nft-section {
       margin-top: 40px;
+      font-family: 'Nunito Sans', sans-serif;
+      font-size: 12px; /* matches .scoring-panel */
       color: #dfe5ee;
   }
   .nft-rules {
@@ -65,11 +68,19 @@
       border-left: 4px solid #facc14;
       padding: 20px;
       border-radius: 8px;
-      margin-bottom: 30px;
+      margin-bottom: 12px;
       text-align: left;
   }
-  .nft-rules h3 { margin-top: 0; color: #facc14; }
-  .nft-verify { margin-bottom: 12px; font-weight: bold; text-align: left; }
+  .nft-rules h3 { margin-top: 0; color: #facc14; font-size: inherit; }
+  .nft-rules ul, .nft-rules li { font-size: inherit; }
+  .nft-verify { 
+      margin-bottom: 12px; 
+      font-weight: bold; 
+      text-align: left; 
+      font-family: 'Nunito Sans', sans-serif; 
+      font-size: 12px; 
+      color: #dfe5ee; 
+  }
   .nft-links-row {
       display: flex;
       gap: 12px;
@@ -83,6 +94,7 @@
       text-decoration: none;
       color: #fff;
       font-weight: bold;
+      font-size: inherit;
       transition: 0.2s;
   }
   .nft-links-row a:hover { background: #3d4d69; }
@@ -90,6 +102,7 @@
       background: #2a3447;
       padding: 20px;
       border-radius: 8px;
+      font-size: inherit;
   }
   .opensea-box a {
       display: inline-block;
@@ -100,6 +113,7 @@
       border-radius: 8px;
       text-decoration: none;
       font-weight: bold;
+      font-size: inherit;
       transition: 0.2s;
   }
   .opensea-box a:hover { background: #166bb7; }
