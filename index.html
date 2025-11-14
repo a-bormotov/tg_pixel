@@ -54,6 +54,55 @@
   .small-hint { font-size:12px; opacity:.8; margin-top:6px; }
   .download { display:inline-block; margin:10px 0; color:#bf83fb; text-decoration:underline; }
   .error { color:#ffb4b4; }
+
+  /* -------- NFT BLOCK STYLES -------- */
+  .nft-section {
+      margin-top: 40px;
+      color: #dfe5ee;
+  }
+  .nft-rules {
+      background: #2a3447;
+      border-left: 4px solid #facc14;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 30px;
+      text-align: left;
+  }
+  .nft-rules h3 { margin-top: 0; color: #facc14; }
+  .nft-links-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 30px;
+  }
+  .nft-links-row a {
+      flex: 1;
+      padding: 12px;
+      background: #2d3b52;
+      border-radius: 8px;
+      text-decoration: none;
+      color: #fff;
+      font-weight: bold;
+      transition: 0.2s;
+  }
+  .nft-links-row a:hover { background: #3d4d69; }
+  .opensea-box {
+      background: #2a3447;
+      padding: 20px;
+      border-radius: 8px;
+  }
+  .opensea-box a {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 12px 20px;
+      background: #2081e2;
+      color: white;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: bold;
+      transition: 0.2s;
+  }
+  .opensea-box a:hover { background: #166bb7; }
+  /* -------- END NFT BLOCK -------- */
   </style>
 </head>
 <body>
@@ -87,6 +136,32 @@
     <div class="item Dino">Bonus Cards: Darkling</div>
     <div class="item score count" style="color: #FFD700;">Rare +1% | Epic +3% | Legendary +10%</div>
   </div>
+
+  <!-- NFT BLOCK START -->
+  <div class="nft-section">
+
+      <div class="nft-rules">
+          <h3>Rules for NFT Multiplier</h3>
+          <ul>
+              <li>1–2 NFTs gives you <strong>x1.1</strong> to score</li>
+              <li>3–4 NFTs gives you <strong>x1.2</strong> to score</li>
+              <li>5 or more NFTs gives you <strong>x1.3</strong> to score</li>
+          </ul>
+      </div>
+
+      <div class="nft-links-row">
+          <a href="https://t.me/+qg4WYGw1dpRhODFk" target="_blank">1 NFT</a>
+          <a href="https://t.me/+0NScpbwUqMY0MjE0" target="_blank">3 NFT</a>
+          <a href="https://t.me/+Yw18TTSr1_84YWRk" target="_blank">5 NFT</a>
+      </div>
+
+      <div class="opensea-box">
+          <div>Buy NFTs on OpenSea</div>
+          <a href="https://opensea.io/collection/dino-gotchis/explore" target="_blank">OpenSea Collection</a>
+      </div>
+
+  </div>
+  <!-- NFT BLOCK END -->
 
   <!-- Search -->
   <div class="search-box">
@@ -354,6 +429,7 @@
     });
   })();
   </script>
+
 </div>
 </body>
 </html>
