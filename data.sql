@@ -1,19 +1,29 @@
--- data.sql — окно времени
+-- data.sql
+-- DB1: шаблон. Питон подставляет {IDS} списком userId из DB2 (user_data.sql).
+-- Для ручного теста можно временно вписать:
+--   {IDS} → ('123456789'),('987654321')
+
 WITH
 win AS (
   SELECT
     TIMESTAMPTZ '2025-11-10 16:00:00+00' AS win_start,
-    TIMESTAMPTZ '2025-11-17 16:00:00+00' AS win_end
+    TIMESTAMPTZ '2025-11-26 16:00:00+00' AS win_end
 ),
 
-/* События в окне */
+-- Участники эвента: список userId, приходит из питона
+participants AS (
+  SELECT "userId"
+  FROM (VALUES {IDS}) AS v("userId")
+),
+
+/* 1) События в окне по этим userId */
 ewin AS (
-  SELECT *
-  FROM events e, win
-  WHERE e."createdAt" >= win.win_start
+  SELECT e.*
+  FROM events e, win, participants p
+  WHERE e."userId" = p."userId"
+    AND e."createdAt" >= win.win_start
     AND e."createdAt" <  win.win_end
-    AND lower(left(e."userId", 4)) <> 'line'   -- отсечь line*
-    -- AND e."userId" = '988810706'           -- для точечного теста
+    AND lower(left(e."userId", 4)) <> 'line'
     AND e."name" IN (
       'ClaimChallengesAction',
       'UnlockChallengeAction',
@@ -22,36 +32,36 @@ ewin AS (
     )
 ),
 
-/* 1) Claim/Unlock — прямые gold */
-gold_claim_unlock AS (
+/* 2) Claim/Unlock — прямые purpleStones */
+purple_claim_unlock AS (
   SELECT
     e."userId",
     SUM(
-      COALESCE(NULLIF(e.payload::jsonb #>> '{output,gold,amount}','')::bigint, 0) +
-      COALESCE(NULLIF(e.payload::jsonb #>> '{output,rewards,gold,amount}','')::bigint, 0)
+      COALESCE(NULLIF(e.payload::jsonb #>> '{output,purpleStones,amount}','')::bigint, 0) +
+      COALESCE(NULLIF(e.payload::jsonb #>> '{output,rewards,purpleStones,amount}','')::bigint, 0)
     ) AS amt
   FROM ewin e
   WHERE e."name" IN ('ClaimChallengesAction','UnlockChallengeAction')
   GROUP BY e."userId"
 ),
 
-/* 2) Реклама (суммы gold из payload) */
+/* 3) Реклама (суммы purpleStones из payload) */
 ads_only AS (
   SELECT
     e."userId",
     e."createdAt",
-    COALESCE(NULLIF(e.payload::jsonb #>> '{input,rewards,gold,amount}','')::bigint, 0) AS amt
+    COALESCE(NULLIF(e.payload::jsonb #>> '{input,rewards,purpleStones,amount}','')::bigint, 0) AS amt
   FROM ewin e
   WHERE e."name" = 'WatchAdsPostHookAction'
 ),
 
-/* 3) Ограничим историю подписок только нужными игроками */
+/* 4) Ограничим историю подписок только нужными игроками */
 uids AS (
   SELECT DISTINCT "userId"
   FROM ads_only
 ),
 
-/* 4) Интервалы подписки из "vipHistory": [from, next_from) */
+/* 5) Интервалы подписки из "vipHistory": [from, next_from) */
 vip_ranges AS (
   SELECT
     v."userId",
@@ -62,7 +72,7 @@ vip_ranges AS (
   JOIN uids u ON u."userId" = v."userId"
 ),
 
-/* 5) Назначим каждому показу актуальный vipLevel (или vip0) */
+/* 6) Назначим каждому показу актуальный vipLevel (или vip0) */
 ads_with_level AS (
   SELECT
     a."userId",
@@ -76,7 +86,7 @@ ads_with_level AS (
     AND (r.to_ts IS NULL OR a."createdAt" < r.to_ts)
 ),
 
-/* 6) Порог на момент показа */
+/* 7) Порог на момент показа (логика та же, что в прошлый раз) */
 ads_with_threshold AS (
   SELECT
     "userId",
@@ -91,7 +101,7 @@ ads_with_threshold AS (
   FROM ads_with_level
 ),
 
-/* 7) Серии подряд одинаковых (amt, threshold) */
+/* 8) Серии подряд одинаковых (amt, threshold) */
 ads_series AS (
   SELECT
     a.*,
@@ -100,7 +110,7 @@ ads_series AS (
   FROM ads_with_threshold a
 ),
 
-/* 8) Агрегируем серию: считаем её длину и параметры */
+/* 9) Агрегируем серию */
 ads_credits AS (
   SELECT
     "userId",
@@ -112,8 +122,8 @@ ads_credits AS (
   GROUP BY "userId", grp
 ),
 
-/* 9) Кредиты за рекламу: максимум ОДИН кредит на серию */
-gold_watchads AS (
+/* 10) Кредиты за рекламу: максимум ОДИН кредит на серию */
+purple_watchads AS (
   SELECT
     "userId",
     SUM(CASE WHEN cnt >= threshold THEN amt ELSE 0 END)::bigint AS amt
@@ -121,24 +131,27 @@ gold_watchads AS (
   GROUP BY "userId"
 ),
 
-/* 10) Общая сумма gold */
-gold AS (
-  SELECT "userId", SUM(amt)::bigint AS gold
+/* 11) Общая сумма purpleStones */
+purple AS (
+  SELECT "userId", SUM(amt)::bigint AS "purpleStones"
   FROM (
-    SELECT "userId", amt FROM gold_claim_unlock
+    SELECT "userId", amt FROM purple_claim_unlock
     UNION ALL
-    SELECT "userId", amt FROM gold_watchads
+    SELECT "userId", amt FROM purple_watchads
   ) x
   GROUP BY "userId"
 ),
 
-/* 11) Дарклинги по гаче */
-heroes AS (
+/* 12) Карты из SpendGachaAction — любые, по редкости.
+   ПРЕДПОЛОЖЕНИЕ: редкость лежит в item->>'rarity'
+   и значения: 'rare' / 'epic' / 'legendary'.
+   Если у тебя другое поле или значения — поправь WHERE и FILTER'ы. */
+cards AS (
   SELECT
     e."userId",
-    COUNT(*) FILTER (WHERE (item->>'heroType') = 'darkling')  AS darkling_rare,
-    COUNT(*) FILTER (WHERE (item->>'heroType') = 'darkling2') AS darkling_epic,
-    COUNT(*) FILTER (WHERE (item->>'heroType') = 'darkling3') AS darkling_legendary
+    COUNT(*) FILTER (WHERE (item->>'rarity') = 'rare')       AS "cardsRare",
+    COUNT(*) FILTER (WHERE (item->>'rarity') = 'epic')       AS "cardsEpic",
+    COUNT(*) FILTER (WHERE (item->>'rarity') = 'legendary')  AS "cardsLegendary"
   FROM ewin e
   CROSS JOIN LATERAL jsonb_array_elements(
     CASE
@@ -151,20 +164,23 @@ heroes AS (
   GROUP BY e."userId"
 )
 
-/* 12) Финальный скор: gold * (1 + Σ(darkling * %)) */
+/* 13) Финальный скор: purpleStones * (1 + Σ(cards * %)) */
 SELECT
-  COALESCE(g."userId", h."userId") AS "userId",
-  (COALESCE(g.gold, 0)::numeric) * (
+  p."userId",
+  COALESCE(pr."purpleStones", 0)::bigint     AS "purpleStones",
+  COALESCE(c."cardsRare", 0)                 AS "cardsRare",
+  COALESCE(c."cardsEpic", 0)                 AS "cardsEpic",
+  COALESCE(c."cardsLegendary", 0)            AS "cardsLegendary",
+  ( COALESCE(c."cardsRare",0)
+  + COALESCE(c."cardsEpic",0)
+  + COALESCE(c."cardsLegendary",0) )         AS "heroesMatched",
+  (COALESCE(pr."purpleStones", 0)::numeric) * (
       1
-    + COALESCE(h.darkling_rare, 0)        * 0.01
-    + COALESCE(h.darkling_epic, 0)        * 0.03
-    + COALESCE(h.darkling_legendary, 0)   * 0.10
-  ) AS score,
-  COALESCE(g.gold, 0)            AS gold,
-  COALESCE(h.darkling_rare, 0)   AS "darklingRare",
-  COALESCE(h.darkling_epic, 0)   AS "darklingEpic",
-  COALESCE(h.darkling_legendary, 0) AS "darklingLegendary"
-FROM gold g
-FULL OUTER JOIN heroes h
-  ON g."userId" = h."userId"
-ORDER BY score DESC, gold DESC;
+    + COALESCE(c."cardsRare", 0)      * 0.01
+    + COALESCE(c."cardsEpic", 0)      * 0.03
+    + COALESCE(c."cardsLegendary", 0) * 0.10
+  ) AS score
+FROM participants p
+LEFT JOIN purple pr ON pr."userId" = p."userId"
+LEFT JOIN cards  c  ON c."userId"  = p."userId"
+ORDER BY score DESC, "purpleStones" DESC;
