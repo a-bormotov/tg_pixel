@@ -1,16 +1,19 @@
 -- data.sql
--- DB1: шаблон. Питон подставляет {IDS} списком userId из DB2 (user_data.sql).
--- Для ручного теста можно временно вписать:
---   {IDS} → ('123456789'),('987654321')
+-- DB2: events + "vipHistory"
+-- Шаблон: питон подставляет {IDS} списком userId из DB1 (user_data.sql).
+-- Окно эвента: 2025-11-20 16:00:00 UTC — 2025-11-26 16:00:00 UTC
+-- Ресурс: purpleStones
+-- Скор: purpleStones * (1 + 1% * rare + 3% * epic + 10% * legendary)
+-- Карты: любые из output (SpendGachaAction), редкость по полю rarity (0/1/2+).
 
 WITH
 win AS (
   SELECT
-    TIMESTAMPTZ '2025-11-10 16:00:00+00' AS win_start,
+    TIMESTAMPTZ '2025-11-20 16:00:00+00' AS win_start,
     TIMESTAMPTZ '2025-11-26 16:00:00+00' AS win_end
 ),
 
--- Участники эвента: список userId, приходит из питона
+-- Участники эвента: список userId приходит из питона
 participants AS (
   SELECT "userId"
   FROM (VALUES {IDS}) AS v("userId")
@@ -19,9 +22,10 @@ participants AS (
 /* 1) События в окне по этим userId */
 ewin AS (
   SELECT e.*
-  FROM events e, win, participants p
-  WHERE e."userId" = p."userId"
-    AND e."createdAt" >= win.win_start
+  FROM events e
+  JOIN participants p ON p."userId" = e."userId"
+  CROSS JOIN win
+  WHERE e."createdAt" >= win.win_start
     AND e."createdAt" <  win.win_end
     AND lower(left(e."userId", 4)) <> 'line'
     AND e."name" IN (
@@ -78,15 +82,15 @@ ads_with_level AS (
     a."userId",
     a."createdAt",
     a.amt,
-    COALESCE(r."vipLevel", 'vip0') AS vip_level
+    COALESCE(vr."vipLevel", 'vip0') AS vip_level
   FROM ads_only a
-  LEFT JOIN vip_ranges r
-    ON  r."userId" = a."userId"
-    AND a."createdAt" >= r.from_ts
-    AND (r.to_ts IS NULL OR a."createdAt" < r.to_ts)
+  LEFT JOIN vip_ranges vr
+    ON  vr."userId" = a."userId"
+    AND a."createdAt" >= vr.from_ts
+    AND (vr.to_ts IS NULL OR a."createdAt" < vr.to_ts)
 ),
 
-/* 7) Порог на момент показа (логика та же, что в прошлый раз) */
+/* 7) Порог на момент показа (та же логика, что в прошлом ивенте) */
 ads_with_threshold AS (
   SELECT
     "userId",
@@ -142,16 +146,20 @@ purple AS (
   GROUP BY "userId"
 ),
 
-/* 12) Карты из SpendGachaAction — любые, по редкости.
-   ПРЕДПОЛОЖЕНИЕ: редкость лежит в item->>'rarity'
-   и значения: 'rare' / 'epic' / 'legendary'.
-   Если у тебя другое поле или значения — поправь WHERE и FILTER'ы. */
+/* 12) Карты из SpendGachaAction — любые, по числовому rarity:
+      0 = rare, 1 = epic, 2+ = legendary */
 cards AS (
   SELECT
     e."userId",
-    COUNT(*) FILTER (WHERE (item->>'rarity') = 'rare')       AS "cardsRare",
-    COUNT(*) FILTER (WHERE (item->>'rarity') = 'epic')       AS "cardsEpic",
-    COUNT(*) FILTER (WHERE (item->>'rarity') = 'legendary')  AS "cardsLegendary"
+    COUNT(*) FILTER (
+      WHERE (item->>'rarity')::int = 0
+    ) AS "cardsRare",
+    COUNT(*) FILTER (
+      WHERE (item->>'rarity')::int = 1
+    ) AS "cardsEpic",
+    COUNT(*) FILTER (
+      WHERE (item->>'rarity')::int >= 2
+    ) AS "cardsLegendary"
   FROM ewin e
   CROSS JOIN LATERAL jsonb_array_elements(
     CASE
