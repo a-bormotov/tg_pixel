@@ -323,7 +323,10 @@
         }
       }
 
-      // Парсим CSV (ожидаем: Rank, Username, Score, Gold, Darkling rare, Darkling epic, Darkling legendary, NFT, PIXEL, USD (ref.), userId)
+      // Парсим CSV
+      // Ожидаем: Rank, Username, Score, PurpleStones,
+      //          Cards rare, Cards epic, Cards legendary,
+      //          NFT, PIXEL, USD (ref.), userId
       const rows = parseCSV(csvText);
       if (!rows.length) throw new Error('CSV is empty');
 
@@ -337,10 +340,15 @@
           rank:      has('rank') ? toNumber(gi(r,'rank')) : 0,
           username:  has('username') ? gi(r,'username') : '',
           score:     has('score') ? toNumber(gi(r,'score')) : 0,
-          gold:      has('gold') ? toNumber(gi(r,'gold')) : 0,
-          darklingRare:       has('darkling rare') ? toNumber(gi(r,'darkling rare')) : 0,
-          darklingEpic:       has('darkling epic') ? toNumber(gi(r,'darkling epic')) : 0,
-          darklingLegendary:  has('darkling legendary') ? toNumber(gi(r,'darkling legendary')) : 0,
+
+          // здесь вместо gold — PurpleStones
+          purple:    has('purplestones') ? toNumber(gi(r,'purplestones')) : 0,
+
+          // новые названия колонок для карт
+          cardsRare:       has('cards rare') ? toNumber(gi(r,'cards rare')) : 0,
+          cardsEpic:       has('cards epic') ? toNumber(gi(r,'cards epic')) : 0,
+          cardsLegendary:  has('cards legendary') ? toNumber(gi(r,'cards legendary')) : 0,
+
           nft:       has('nft') ? gi(r,'nft') : '-',
           pixelCsv:  has('pixel') ? toNumber(gi(r,'pixel')) : 0,
           usdCsv:    has('usd (ref.)') ? toNumber(gi(r,'usd (ref.)')) : 0
@@ -363,10 +371,10 @@
           <td>${row.rank}</td>
           <td>${escapeHTML(row.username)}</td>
           <td>${fmtInt(row.score)}</td>
-          <td>${fmtInt(row.gold)}</td>
-          <td>${fmtInt(row.darklingRare)}</td>
-          <td>${fmtInt(row.darklingEpic)}</td>
-          <td>${fmtInt(row.darklingLegendary)}</td>
+          <td>${fmtInt(row.purple)}</td>
+          <td>${fmtInt(row.cardsRare)}</td>
+          <td>${fmtInt(row.cardsEpic)}</td>
+          <td>${fmtInt(row.cardsLegendary)}</td>
           <td>${escapeHTML(row.nft ?? '-')}</td>
           <td>${fmtInt(prize.pixel)}</td>
           <td>${fmtUSD(prize.usd)}</td>
@@ -406,6 +414,7 @@
     });
   })();
   </script>
+
 
 </div>
 </body>
