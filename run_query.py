@@ -5,7 +5,7 @@ from sshtunnel import SSHTunnelForwarder
 SQL_FILE       = os.environ.get("SQL_FILE", "data.sql")
 USER_SQL_FILE  = os.environ.get("USER_SQL_FILE", "user_data.sql")
 RAW_CSV        = os.environ.get("OUTPUT_CSV", "raw_data.csv")
-RESULT_CSV     = "nresult_data.csv"
+RESULT_CSV     = "result_data.csv"
 BLACKLIST_FILE = "black_list.csv"   # столбец: userid
 NFT_FILE       = "nft_data.csv"     # столбцы: userId, multiplier
 TOP_N          = int(os.environ.get("TOP_N", "3000"))
@@ -85,14 +85,14 @@ def main():
     ssh_key_password = os.getenv("SSH_KEY_PASSWORD")
     key_path = write_key(ssh_key)
 
-    # ---- DB1 (events + vipHistory) ----
+    # ---- DB1 (main: users + users_additional) ----
     db1_host = need("DB1_HOST")
     db1_port = as_int("DB1_PORT", 5432)
     db1_name = need("DB1_NAME")
     db1_user = need("DB1_USER")
     db1_pass = clean_password(need("DB1_PASS"))
 
-    # ---- DB2 (users + users_additional) ----
+    # ---- DB2 (events + vipHistory) ----
     db2_host = need("DB2_HOST")
     db2_port = as_int("DB2_PORT", 5432)
     db2_name = need("DB2_NAME")
@@ -110,10 +110,10 @@ def main():
     with open(USER_SQL_FILE, "r", encoding="utf-8") as f:
         sql_user = f.read()
 
-    # ===== 1) DB2 -> участники (vip2/vip3) =====
-    print("[1] Query DB2 (users_additional + users)...")
+    # ===== 1) DB1 -> участники (vip2/vip3) =====
+    print("[1] Query DB1 (users_additional + users)...")
     cols_users, rows_users = run_sql_via_ssh(
-        db2_host, db2_port, db2_name, db2_user, db2_pass,
+        db1_host, db1_port, db1_name, db1_user, db1_pass,
         ssh_host, ssh_port, ssh_user, key_path, ssh_key_password,
         sql_user
     )
@@ -153,7 +153,7 @@ def main():
 
     print(f"[1] Participants (vip2/vip3): {len(vip_ids)}")
 
-    # ===== 2) Подставляем IDs в data.sql (DB1) =====
+    # ===== 2) Подставляем IDs в data.sql (DB2) =====
     if "{IDS}" not in sql_data_tpl:
         print("[config error] data.sql must contain {IDS} placeholder.", file=sys.stderr)
         sys.exit(2)
@@ -163,10 +163,10 @@ def main():
     )
     sql_data_final = sql_data_tpl.replace("{IDS}", values_rows)
 
-    # ===== 3) DB1 -> raw_data.csv (purpleStones + карты) =====
-    print("[2] Query DB1 (events + vipHistory)...")
+    # ===== 3) DB2 -> raw_data.csv (purpleStones + карты) =====
+    print("[2] Query DB2 (events + vipHistory)...")
     cols2, rows2 = run_sql_via_ssh(
-        db1_host, db1_port, db1_name, db1_user, db1_pass,
+        db2_host, db2_port, db2_name, db2_user, db2_pass,
         ssh_host, ssh_port, ssh_user, key_path, ssh_key_password,
         sql_data_final
     )
