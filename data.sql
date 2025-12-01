@@ -1,10 +1,11 @@
 -- data.sql
--- DB2: events + "vipHistory"
+-- DB1: events + "vipHistory"
 -- Шаблон: питон подставляет {IDS} списком userId из DB1 (user_data.sql).
 -- Окно эвента: 2025-11-20 16:00:00 UTC — 2025-11-26 16:00:00 UTC
 -- Ресурс: purpleStones
 -- Скор: purpleStones * (1 + 1% * rare + 3% * epic + 10% * legendary)
 -- Карты: любые из output (SpendGachaAction), редкость по полю rarity (0/1/2+).
+-- ВАЖНО: серии рекламы считаются внутри "пакетов" после Claim/Unlock с фиолетом.
 
 WITH
 win AS (
@@ -36,6 +37,28 @@ ewin AS (
     )
 ),
 
+/* 1.1) Пакеты: счётчик Claim/Unlock, которые реально дают purpleStones */
+ewin_with_pack AS (
+  SELECT
+    e.*,
+    SUM(
+      CASE
+        WHEN e."name" IN ('ClaimChallengesAction','UnlockChallengeAction')
+         AND (
+           NULLIF(e.payload::jsonb #>> '{output,purpleStones,amount}','') IS NOT NULL
+           OR NULLIF(e.payload::jsonb #>> '{output,rewards,purpleStones,amount}','') IS NOT NULL
+         )
+        THEN 1
+        ELSE 0
+      END
+    ) OVER (
+      PARTITION BY e."userId"
+      ORDER BY e."createdAt"
+      ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ) AS pack_id
+  FROM ewin e
+),
+
 /* 2) Claim/Unlock — прямые purpleStones */
 purple_claim_unlock AS (
   SELECT
@@ -44,7 +67,7 @@ purple_claim_unlock AS (
       COALESCE(NULLIF(e.payload::jsonb #>> '{output,purpleStones,amount}','')::bigint, 0) +
       COALESCE(NULLIF(e.payload::jsonb #>> '{output,rewards,purpleStones,amount}','')::bigint, 0)
     ) AS amt
-  FROM ewin e
+  FROM ewin_with_pack e
   WHERE e."name" IN ('ClaimChallengesAction','UnlockChallengeAction')
   GROUP BY e."userId"
 ),
@@ -54,8 +77,12 @@ ads_only AS (
   SELECT
     e."userId",
     e."createdAt",
-    COALESCE(NULLIF(e.payload::jsonb #>> '{input,rewards,purpleStones,amount}','')::bigint, 0) AS amt
-  FROM ewin e
+    e.pack_id,
+    COALESCE(
+      NULLIF(e.payload::jsonb #>> '{input,rewards,purpleStones,amount}','')::bigint,
+      0
+    ) AS amt
+  FROM ewin_with_pack e
   WHERE e."name" = 'WatchAdsPostHookAction'
 ),
 
@@ -81,6 +108,7 @@ ads_with_level AS (
   SELECT
     a."userId",
     a."createdAt",
+    a.pack_id,
     a.amt,
     COALESCE(vr."vipLevel", 'vip0') AS vip_level
   FROM ads_only a
@@ -90,11 +118,12 @@ ads_with_level AS (
     AND (vr.to_ts IS NULL OR a."createdAt" < vr.to_ts)
 ),
 
-/* 7) Порог на момент показа (та же логика, что в прошлом ивенте) */
+/* 7) Порог на момент показа */
 ads_with_threshold AS (
   SELECT
     "userId",
     "createdAt",
+    pack_id,
     amt,
     CASE vip_level
       WHEN 'vip3' THEN 1
@@ -105,12 +134,21 @@ ads_with_threshold AS (
   FROM ads_with_level
 ),
 
-/* 8) Серии подряд одинаковых (amt, threshold) */
+/* 8) Серии подряд одинаковых (amt, threshold) ВНУТРИ ОДНОГО pack_id */
 ads_series AS (
   SELECT
     a.*,
-    (ROW_NUMBER() OVER (PARTITION BY "userId" ORDER BY "createdAt")
-     - ROW_NUMBER() OVER (PARTITION BY "userId", amt, threshold ORDER BY "createdAt")) AS grp
+    (
+      ROW_NUMBER() OVER (
+        PARTITION BY "userId", pack_id
+        ORDER BY "createdAt"
+      )
+      -
+      ROW_NUMBER() OVER (
+        PARTITION BY "userId", pack_id, amt, threshold
+        ORDER BY "createdAt"
+      )
+    ) AS grp
   FROM ads_with_threshold a
 ),
 
@@ -118,19 +156,22 @@ ads_series AS (
 ads_credits AS (
   SELECT
     "userId",
+    pack_id,
     grp,
     MAX(amt)       AS amt,
     MAX(threshold) AS threshold,
     COUNT(*)       AS cnt
   FROM ads_series
-  GROUP BY "userId", grp
+  GROUP BY "userId", pack_id, grp
 ),
 
-/* 10) Кредиты за рекламу: максимум ОДИН кредит на серию */
+/* 10) Кредиты за рекламу: максимум ОДИН кредит на серию внутри пакета */
 purple_watchads AS (
   SELECT
     "userId",
-    SUM(CASE WHEN cnt >= threshold THEN amt ELSE 0 END)::bigint AS amt
+    SUM(
+      CASE WHEN cnt >= threshold THEN amt ELSE 0 END
+    )::bigint AS amt
   FROM ads_credits
   GROUP BY "userId"
 ),
@@ -160,7 +201,7 @@ cards AS (
     COUNT(*) FILTER (
       WHERE (item->>'rarity')::int >= 2
     ) AS "cardsLegendary"
-  FROM ewin e
+  FROM ewin_with_pack e
   CROSS JOIN LATERAL jsonb_array_elements(
     CASE
       WHEN jsonb_typeof(e.payload::jsonb->'output') = 'array'
