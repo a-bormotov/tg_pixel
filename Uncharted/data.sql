@@ -54,5 +54,5 @@ LEFT JOIN resources          r  ON r."userId"  = u.id
 LEFT JOIN hero_stars         hs ON hs."userId" = u.id
 LEFT JOIN challenge_progress cp ON cp."userId" = u.id
 WHERE
-    u."createdAt" >= DATE '2025-12-07'
+    u."createdAt" >= DATE '2025-12-11'
 ;
