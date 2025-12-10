@@ -1,4 +1,4 @@
-name: Run VIP purpleStones event
+name: Run Legendary Gold event
 
 on:
   workflow_dispatch: {}
@@ -26,7 +26,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install "psycopg2-binary==2.9.9" "sshtunnel==0.4.0" "paramiko==2.12.0"
 
-      - name: Run pipeline (DB2 -> participants, DB1 -> raw_data.csv/result_data.csv)
+      - name: Run pipeline (DB1 -> raw_data.csv, DB2 -> usernames/result_data.csv)
         env:
           # SSH
           SSH_HOST: ${{ secrets.SSH_HOST }}
@@ -66,6 +66,6 @@ jobs:
             echo "No changes — skip commit/push."
             exit 0
           fi
-          git commit -m "Update VIP purpleStones event CSVs [skip ci]"
+          git commit -m "Update Legendary Gold event CSVs [skip ci]"
           git pull --rebase --autostash origin "${{ github.ref_name }}"
           git push origin HEAD:"${{ github.ref_name }}"

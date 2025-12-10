@@ -1,30 +1,26 @@
 -- data.sql
 -- DB1: events + "vipHistory"
--- Шаблон: питон подставляет {IDS} списком userId из DB1 (user_data.sql).
--- Окно эвента: 2025-11-20 16:00:00 UTC — 2025-11-26 16:00:00 UTC
--- Ресурс: purpleStones
--- Скор: purpleStones * (1 + 1% * rare + 3% * epic + 10% * legendary)
--- Карты: любые из output (SpendGachaAction), редкость по полю rarity (0/1/2+).
--- ВАЖНО: серии рекламы считаются внутри "пакетов" после Claim/Unlock с фиолетом.
+-- Окно эвента: 2025-12-08 16:00:00 UTC — 2025-12-15 16:00:00 UTC
+-- Ресурс: gold
+-- Скор: gold * (1 + 10% * cardsLegendary)
+-- Карты: любые из output (SpendGachaAction), редкость по полю rarity:
+--   rarity = 0 -> обычные/rare
+--   rarity = 1 -> epic
+--   rarity >= 2 -> legendary
+-- ВАЖНО: серии рекламы считаются внутри "пакетов" после Claim/Unlock с gold,
+--        логика пакетов и серий взята из последнего файла с purpleStones.
 
 WITH
 win AS (
   SELECT
-    TIMESTAMPTZ '2025-11-20 16:00:00+00' AS win_start,
-    TIMESTAMPTZ '2025-11-26 16:00:00+00' AS win_end
+    TIMESTAMPTZ '2025-12-08 16:00:00+00' AS win_start,
+    TIMESTAMPTZ '2025-12-15 16:00:00+00' AS win_end
 ),
 
--- Участники эвента: список userId приходит из питона
-participants AS (
-  SELECT "userId"
-  FROM (VALUES {IDS}) AS v("userId")
-),
-
-/* 1) События в окне по этим userId */
+/* 1) События в окне (для всех, кроме userId, начинающихся с 'line') */
 ewin AS (
   SELECT e.*
   FROM events e
-  JOIN participants p ON p."userId" = e."userId"
   CROSS JOIN win
   WHERE e."createdAt" >= win.win_start
     AND e."createdAt" <  win.win_end
@@ -37,7 +33,7 @@ ewin AS (
     )
 ),
 
-/* 1.1) Пакеты: счётчик Claim/Unlock, которые реально дают purpleStones */
+/* 1.1) Пакеты: Claim/Unlock, которые реально дают gold */
 ewin_with_pack AS (
   SELECT
     e.*,
@@ -45,8 +41,8 @@ ewin_with_pack AS (
       CASE
         WHEN e."name" IN ('ClaimChallengesAction','UnlockChallengeAction')
          AND (
-           NULLIF(e.payload::jsonb #>> '{output,purpleStones,amount}','') IS NOT NULL
-           OR NULLIF(e.payload::jsonb #>> '{output,rewards,purpleStones,amount}','') IS NOT NULL
+           NULLIF(e.payload::jsonb #>> '{output,gold,amount}','') IS NOT NULL
+           OR NULLIF(e.payload::jsonb #>> '{output,rewards,gold,amount}','') IS NOT NULL
          )
         THEN 1
         ELSE 0
@@ -59,34 +55,34 @@ ewin_with_pack AS (
   FROM ewin e
 ),
 
-/* 2) Claim/Unlock — прямые purpleStones */
-purple_claim_unlock AS (
+/* 2) Claim/Unlock — прямые gold */
+gold_claim_unlock AS (
   SELECT
     e."userId",
     SUM(
-      COALESCE(NULLIF(e.payload::jsonb #>> '{output,purpleStones,amount}','')::bigint, 0) +
-      COALESCE(NULLIF(e.payload::jsonb #>> '{output,rewards,purpleStones,amount}','')::bigint, 0)
+      COALESCE(NULLIF(e.payload::jsonb #>> '{output,gold,amount}','')::bigint, 0) +
+      COALESCE(NULLIF(e.payload::jsonb #>> '{output,rewards,gold,amount}','')::bigint, 0)
     ) AS amt
   FROM ewin_with_pack e
   WHERE e."name" IN ('ClaimChallengesAction','UnlockChallengeAction')
   GROUP BY e."userId"
 ),
 
-/* 3) Реклама (суммы purpleStones из payload) */
+/* 3) Реклама (суммы gold из payload) */
 ads_only AS (
   SELECT
     e."userId",
     e."createdAt",
     e.pack_id,
     COALESCE(
-      NULLIF(e.payload::jsonb #>> '{input,rewards,purpleStones,amount}','')::bigint,
+      NULLIF(e.payload::jsonb #>> '{input,rewards,gold,amount}','')::bigint,
       0
     ) AS amt
   FROM ewin_with_pack e
   WHERE e."name" = 'WatchAdsPostHookAction'
 ),
 
-/* 4) Ограничим историю подписок только нужными игроками */
+/* 4) Ограничим историю подписок только нужными игроками (те, у кого есть реклама) */
 uids AS (
   SELECT DISTINCT "userId"
   FROM ads_only
@@ -166,7 +162,7 @@ ads_credits AS (
 ),
 
 /* 10) Кредиты за рекламу: максимум ОДИН кредит на серию внутри пакета */
-purple_watchads AS (
+gold_watchads AS (
   SELECT
     "userId",
     SUM(
@@ -176,19 +172,19 @@ purple_watchads AS (
   GROUP BY "userId"
 ),
 
-/* 11) Общая сумма purpleStones */
-purple AS (
-  SELECT "userId", SUM(amt)::bigint AS "purpleStones"
+/* 11) Общая сумма gold */
+gold AS (
+  SELECT "userId", SUM(amt)::bigint AS gold
   FROM (
-    SELECT "userId", amt FROM purple_claim_unlock
+    SELECT "userId", amt FROM gold_claim_unlock
     UNION ALL
-    SELECT "userId", amt FROM purple_watchads
+    SELECT "userId", amt FROM gold_watchads
   ) x
   GROUP BY "userId"
 ),
 
-/* 12) Карты из SpendGachaAction — любые, по числовому rarity:
-      0 = rare, 1 = epic, 2+ = legendary */
+/* 12) Карты из SpendGachaAction — по rarity:
+      0 = обычные/rare, 1 = epic, 2+ = legendary */
 cards AS (
   SELECT
     e."userId",
@@ -213,23 +209,24 @@ cards AS (
   GROUP BY e."userId"
 )
 
-/* 13) Финальный скор: purpleStones * (1 + Σ(cards * %)) */
+/* 13) Финальный скор: gold * (1 + 10% * cardsLegendary)
+   (редкие/эпические ни на что не влияют, но остаются в сырой статистике) */
 SELECT
-  p."userId",
-  COALESCE(pr."purpleStones", 0)::bigint     AS "purpleStones",
-  COALESCE(c."cardsRare", 0)                 AS "cardsRare",
-  COALESCE(c."cardsEpic", 0)                 AS "cardsEpic",
-  COALESCE(c."cardsLegendary", 0)            AS "cardsLegendary",
-  ( COALESCE(c."cardsRare",0)
-  + COALESCE(c."cardsEpic",0)
-  + COALESCE(c."cardsLegendary",0) )         AS "heroesMatched",
-  (COALESCE(pr."purpleStones", 0)::numeric) * (
+  COALESCE(g."userId", c."userId")        AS "userId",
+  COALESCE(g.gold, 0)::bigint            AS gold,
+  COALESCE(c."cardsRare", 0)             AS "cardsRare",
+  COALESCE(c."cardsEpic", 0)             AS "cardsEpic",
+  COALESCE(c."cardsLegendary", 0)        AS "cardsLegendary",
+  (
+    COALESCE(c."cardsRare", 0)
+  + COALESCE(c."cardsEpic", 0)
+  + COALESCE(c."cardsLegendary", 0)
+  )                                      AS "heroesMatched",
+  (COALESCE(g.gold, 0)::numeric) * (
       1
-    + COALESCE(c."cardsRare", 0)      * 0.01
-    + COALESCE(c."cardsEpic", 0)      * 0.03
     + COALESCE(c."cardsLegendary", 0) * 0.10
-  ) AS score
-FROM participants p
-LEFT JOIN purple pr ON pr."userId" = p."userId"
-LEFT JOIN cards  c  ON c."userId"  = p."userId"
-ORDER BY score DESC, "purpleStones" DESC;
+  )                                      AS score
+FROM gold g
+FULL OUTER JOIN cards c
+  ON g."userId" = c."userId"
+ORDER BY score DESC, gold DESC;
