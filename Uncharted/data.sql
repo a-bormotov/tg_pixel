@@ -46,7 +46,7 @@ SELECT
     -- Прогресс по испытаниям
     cp.max_normal_constellation AS "Max Normal Constellation",
     cp.max_raid_constellation   AS "Max Raid Constellation",
-    u."createdAt" as "Registration Date"
+    -- u."createdAt" as "Registration Date"
 
 FROM users u
 LEFT JOIN stars_spend        ss ON ss."userId" = u.id
