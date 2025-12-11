@@ -71,11 +71,11 @@
   .opensea-box a { display:inline-block; margin-top:10px; padding:12px 20px; background:#2081e2; color:white; border-radius:8px; text-decoration:none; font-weight:bold; font-size:inherit; transition:0.2s; }
   .opensea-box a:hover { background:#166bb7; }
 
-  /* Leaderboard Title: делаем full-width секцию */
+  /* Leaderboard Title: обычная блок-ширина, а не 100vw */
   .leaderboard-wrapper {
-    width: 100vw;
-    margin-left: calc(50% - 50vw);
-    margin-right: calc(50% - 50vw);
+    width: 90%;
+    max-width: 1200px;
+    margin: 0 auto;
     box-sizing: border-box;
   }
   .leaderboard-title {
@@ -166,9 +166,9 @@
   <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="6" x2="12" y2="12"></line><line x1="12" y1="12" x2="16" y2="14"></line></svg>
   Last Updated: —  
 </div>
-</div> <!-- конец .container, дальше full-width блок -->
+</div> <!-- конец первого .container -->
 
-<!-- Leaderboard (full width) -->
+<!-- Leaderboard -->
 <div class="leaderboard-wrapper">
   <div class="leaderboard-title">LEADERBOARD</div>
   <div class="table-container">
@@ -178,9 +178,7 @@
           <th>Rank</th>
           <th>Username</th>
           <th>Score</th>
-          <th>PurpleStones</th>
-          <th>Cards rare</th>
-          <th>Cards epic</th>
+          <th>Gold</th>
           <th>Cards legendary</th>
           <th>NFT</th>
           <th>PIXEL</th>
@@ -191,14 +189,14 @@
       </thead>
       <tbody id="tbody">
         <tr>
-          <td colspan="12" style="background: #1c1431;text-align:center;">Loading…</td>
+          <td colspan="10" style="background: #1c1431;text-align:center;">Loading…</td>
         </tr>
       </tbody>
     </table>
   </div>
 </div>
 
-<!-- Bottom stats (внутри отдельного контейнера, чтобы ширина как у верхнего блока) -->
+<!-- Bottom stats -->
 <div class="container">
   <div class="stats">
     <div class="stat-box" style="background: #32371a;color: #f0f7ba;">
@@ -407,18 +405,12 @@
         const username = has('username') ? gi(r,'username') : '';
         const score    = has('score') ? toNumber(gi(r,'score')) : 0;
 
-        // PurpleStones (если такой колонки нет — берём Gold)
-        let purple = 0;
-        if (has('purplestones')) purple = toNumber(gi(r,'purplestones'));
-        else if (has('gold'))   purple = toNumber(gi(r,'gold'));
+        // Gold (если нет — берём PurpleStones как запасной вариант)
+        let gold = 0;
+        if (has('gold')) gold = toNumber(gi(r,'gold'));
+        else if (has('purplestones')) gold = toNumber(gi(r,'purplestones'));
 
-        // Cards rare/epic/legendary
-        const cardsRare = has('cards rare') ? toNumber(gi(r,'cards rare'))
-                        : has('cardsrare')  ? toNumber(gi(r,'cardsrare')) : 0;
-
-        const cardsEpic = has('cards epic') ? toNumber(gi(r,'cards epic'))
-                        : has('cardsepic')  ? toNumber(gi(r,'cardsepic')) : 0;
-
+        // Только легендарные карты
         let cardsLegendary = 0;
         if (has('cards legendary')) cardsLegendary = toNumber(gi(r,'cards legendary'));
         else if (has('legendary cards')) cardsLegendary = toNumber(gi(r,'legendary cards'));
@@ -437,9 +429,7 @@
           rank,
           username,
           score,
-          purple,
-          cardsRare,
-          cardsEpic,
+          gold,
           cardsLegendary,
           nft,
           userId,
@@ -468,9 +458,7 @@
           <td>${row.rank}</td>
           <td>${escapeHTML(row.username)}</td>
           <td>${fmtInt(row.score)}</td>
-          <td>${fmtInt(row.purple)}</td>
-          <td>${fmtInt(row.cardsRare)}</td>
-          <td>${fmtInt(row.cardsEpic)}</td>
+          <td>${fmtInt(row.gold)}</td>
           <td>${fmtInt(row.cardsLegendary)}</td>
           <td>${escapeHTML(row.nft ?? '-')}</td>
           <td>${fmtInt(pixelVal)}</td>
