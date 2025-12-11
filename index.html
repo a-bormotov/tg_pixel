@@ -1,183 +1,504 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Event Leaderboard</title>
+<!-- saved from url=(0070)file:///C:/Users/Celina%20Puhach/Downloads/online_viewer_net%20(1).htm -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
+  <title>Sleepagotchi x Pixels Event</title>
+  <link href="file:///C:/Users/Celina%20Puhach/Downloads/Sleepagotchi%20x%20Pixels%20Event_files/css2" rel="stylesheet">
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #1d2739;
-      color: #d0d8e0;
-      text-align: center;
-      margin: 0;
-      padding: 20px;
-    }
-    table {
-      margin: auto;
-      border-collapse: collapse;
-      width: 95%;
-      background: #263249;
-      color: #fff;
-      font-size: 14px;
-    }
-    th, td {
-      padding: 8px 10px;
-      border: 1px solid #3a475f;
-    }
-    th {
-      background: #31405a;
-      position: sticky;
-      top: 0;
-      z-index: 2;
-    }
-    tr:nth-child(even) { background: #2c3a54; }
+  body {
+    margin: 0;
+    font-family: 'Nunito Sans', sans-serif;
+    background: #1d2739;
+    color: #91a0b5;
+    text-align: center;
+    font-size: 14px;
+  }
+  .container { padding: 20px; max-width: 1000px; margin: 0 auto; }
+  .top-info { background: #312957; padding: 10px; margin-bottom: 15px; font-size: 14px; color: #bf83fb; }
+  .top-info .bullet { display:inline-block; width:6px; height:6px; background:#bf83fb; border-radius:50%; margin-right:6px; animation:pulse 1.5s infinite; }
+  .top-info a { color:#bf83fb; text-decoration:underline; margin-left:6px; }
+  @keyframes pulse { 0%{opacity:1} 50%{opacity:.4} 100%{opacity:1} }
+  .event-title { font-size:28px; color:#b587fb; margin:10px 0; }
+  .event-subtitle { font-size:16px; color:#cbd5e1; }
+  .prize-pool { font-size:24px; font-weight:bold; color:#facc14; margin:15px 0; }
+  .event-details { font-size:14px; color:#cad4e0; margin-bottom:8px; }
+  .event-details svg { width:16px; height:16px; stroke:#94a3b8; fill:none; stroke-width:2; vertical-align:middle; margin:0 4px; }
+  .disclaimer { font-size:12px; color:#cbd5e1; opacity:.7; margin-bottom:20px; }
+  .scoring-panel { background:#1d273a; border:1px solid #94a3b8; padding:15px; margin:20px auto; width:70%; font-size:12px; }
+  .scoring-panel .section-title { color:#d8b3fe; font-weight:bold; margin-bottom:10px; }
+  .scoring-panel .item { margin:4px 0; }
+  .scoring-panel .legendary { color:#fb923c; }
+  .previous-panel { background:#22564f; border:1px solid #269759; padding:15px; margin:20px auto; width:70%; }
+  .previous-panel .title { color:#49de80; font-weight:bold; }
+  .previous-panel .pulse-dot { display:inline-block; width:6px; height:6px; background:#49de80; border-radius:50%; margin:0 6px; animation:pulse 1.5s infinite; }
+  .status-button { display:inline-block; margin-top:10px; background:#16a349; color:#fff; padding:8px 12px; border-radius:5px; text-decoration:none; transition:transform .2s; }
+  .status-button:hover { transform:scale(1.05); }
+  .search-box { margin:20px auto; position:relative; width:320px; }
+  .search-box input { width:100%; padding:10px 12px 10px 36px; border-radius:6px; border:1px solid #94a3b8; background:#1d2739; color:#94a3b8; }
+  .search-box input::placeholder { color:#94a3b8; }
+  .search-icon { position:absolute; left:10px; top:50%; transform:translateY(-50%); width:16px; height:16px; }
+  .search-icon circle, .search-icon line { stroke:#94a3b8; stroke-width:2; fill:none; }
+  .last-updated { color:#94a3b8; font-size:12px; margin:10px 0 20px 0; }
+  .last-updated svg { width:14px; height:14px; stroke:#94a3b8; stroke-width:2; fill:none; vertical-align:middle; margin-right:4px; }
+  .table-container { max-height:400px; overflow-y:auto; margin:auto; width:100%; }
+  table { border-collapse:collapse; width:100%; font-size:13px; }
+  thead th { position:sticky; top:0; background:#2c394c; color:#dfe5ee; padding:8px; }
+  tbody td { padding:8px; border-bottom:1px solid #2a3447; }
+  tbody tr:hover { background:#2c394c; }
+  tbody tr:nth-child(1) { background:#413e2f; color:#fff; font-weight:bold; }
+  tbody tr:nth-child(2) { background:#313e51; color:#fff; font-weight:bold; }
+  tbody tr:nth-child(3) { background:#473431; color:#fff; font-weight:bold; }
+  .stats { display:flex; justify-content:center; gap:20px; margin-top:20px; }
+  .stat-box { flex:1; padding:10px; }
+  .stat-box div:first-child { font-size:28px; font-weight:bold; }
+  .small-hint { font-size:12px; opacity:.8; margin-top:6px; }
+  .download { display:inline-block; margin:10px 0; color:#bf83fb; text-decoration:underline; }
+  .error { color:#ffb4b4; }
+
+  /* -------- NFT BLOCK STYLES -------- */
+  .nft-section { margin-top:40px; font-family: 'Nunito Sans', sans-serif; font-size:12px; color:#dfe5ee; }
+  .nft-rules { background:#2a3447; border-left:4px solid #facc14; padding:20px; border-radius:8px; margin-bottom:12px; text-align:left; }
+  .nft-rules h3 { margin-top:0; color:#facc14; font-size:inherit; }
+  .nft-rules ul, .nft-rules li { font-size:inherit; }
+  .nft-verify { margin-bottom:12px; font-weight:bold; text-align:left; font-family:'Nunito Sans', sans-serif; font-size:12px; color:#dfe5ee; }
+  .nft-links-row { display:flex; gap:12px; margin-bottom:30px; }
+  .nft-links-row a { flex:1; padding:12px; background:#2d3b52; border-radius:8px; text-decoration:none; color:#fff; font-weight:bold; font-size:inherit; transition:0.2s; }
+  .nft-links-row a:hover { background:#3d4d69; }
+  .opensea-box { background:#2a3447; padding:20px; border-radius:8px; font-size:inherit; }
+  .opensea-box a { display:inline-block; margin-top:10px; padding:12px 20px; background:#2081e2; color:white; border-radius:8px; text-decoration:none; font-weight:bold; font-size:inherit; transition:0.2s; }
+  .opensea-box a:hover { background:#166bb7; }
+
+  /* Leaderboard Title */
+  .leaderboard-wrapper { width:90%; margin:0 auto; box-sizing:border-box; }
+  .leaderboard-title { margin:0; width:100%; box-sizing:border-box; padding:10px; background:#D4AF37; color:#0A1A2F; text-align:center; font-size:20px; }
   </style>
 </head>
 <body>
+<div class="container">
 
-<h1>Event Leaderboard</h1>
+<!-- Top info -->
+<div class="top-info" style="color: #F679FF;background: #1c1431;text-align: center;padding: 10px;">
+  
+  <p style="margin: 4px 0;">
+    This event is open for all players to join!
+  </p>
+  <div style="display: inline-flex; align-items: center; gap: 6px; justify-content: center; margin-top: 6px;">
+    <span class="bullet" style="width: 10px; height: 10px; background: #C64BFF; border-radius: 50%; display: inline-block;"></span>
+    <a href="https://game.sleepagotchi.com/" style="color: #FFFFFF;">Play now</a>
+  </div>
+</div>
 
-<table id="leaderboard">
-  <thead>
-    <tr>
-      <th>Rank</th>
-      <th>Username</th>
-      <th>Score</th>
-      <th>PurpleStones</th>
-      <th>Cards rare</th>
-      <th>Cards epic</th>
-      <th>Cards legendary</th>
-      <th>NFT</th>
-      <th>PIXEL</th>
-      <th>PIXEL USD</th>
-      <th>FISH (in USD)</th>
-      <th>Total USD</th>
-      <th>userId</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
+<div class="event-title" style="color: #D4AF37;">Legendary Gold Rush: $FISH Edition</div>
+<div class="event-subtitle">Sleepagotchi x PIXELS Collaboration</div>
+<div class="prize-pool">Prize Pool: $10,000 ($PIXEL & $FISH Combined)</div>
+<div class="event-details">
+  <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+  Thursday 11th, 4pm UTC - Thursday 18th, 4pm UTC
+  <svg viewBox="0 0 24 24"><path d="M6 3h12v2a6 6 0 0 1-6 6 6 6 0 0 1-6-6V3z"></path><rect x="9" y="11" width="6" height="10"></rect></svg>
+  Top 500 Players
+</div>
+<div class="disclaimer">
+  <p>Prizes are paid in $PIXEL to Ronin addresses. USD values are for reference only, based on a rate of $0.010 per $PIXEL. Actual value may vary due to token price volatility.</p>
+  <p>$FISH will be sent out to the winners by the Fishing Frenzy team at the end of the event.</p>
+</div>
 
-<script>
-async function fetchText(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("Failed to load " + url);
-  return await res.text();
-}
+<!-- Scoring -->
+<div class="scoring-panel">
+  <div class="section-title" style="color: #C64BFF;">Scoring System</div>
+  <div class="item">Collect Gold to climb the leaderboard</div>
+  <div class="item">Boost your rewards with any legendries opened from Gacha Packs</div>
+  <div class="item Dino">Bonus Cards: All Lengedary Heroes!</div>
+  <div class="item Dino">This event open to all players</div>
+  <div class="item score count" style="color: #FFD700;">Legendary +10%</div>
+</div>
 
-function parseCsv(text) {
-  const lines = text.trim().split(/\r?\n/);
-  if (!lines.length) return [];
-  const header = lines[0].split(",").map(h => h.trim());
-  return lines.slice(1).map(line => {
-    if (!line.trim()) return null;
-    const parts = line.split(",");
-    const row = {};
-    header.forEach((h, i) => row[h] = (parts[i] || "").trim());
-    return row;
-  }).filter(Boolean);
-}
+<!-- NFT BLOCK START -->
+<div class="nft-section">
+  <div class="nft-rules">
+      <h3>Rules for NFT Multiplier</h3>
+      <ul>
+          <li>1–2 NFTs gives you <strong>x1.1</strong> to score</li>
+          <li>3–4 NFTs gives you <strong>x1.2</strong> to score</li>
+          <li>5 or more NFTs gives you <strong>x1.3</strong> to score</li>
+      </ul>
+  </div>
 
-async function loadLeaderboard() {
-  const resultRows = parseCsv(await fetchText("old_result_data.csv"));
-  const nftRows    = parseCsv(await fetchText("nft_data.csv"));
-  const pixelRows  = parseCsv(await fetchText("pixel.csv"));
-  const fishRows   = parseCsv(await fetchText("fish.csv"));
+  <div class="nft-verify">Verify your NFTs amount:</div>
+  <div class="nft-links-row">
+      <a href="https://t.me/+qg4WYGw1dpRhODFk" target="_blank">1 NFT</a>
+      <a href="https://t.me/+0NScpbwUqMY0MjE0" target="_blank">3 NFT</a>
+      <a href="https://t.me/+Yw18TTSr1_84YWRk" target="_blank">5 NFT</a>
+  </div>
 
-  // Index NFT by userId
-  const nftByUserId = {};
-  nftRows.forEach(r => {
-    if (r.userId) nftByUserId[r.userId] = r.multiplier || "-";
-  });
+  <div class="opensea-box">
+      <div>Buy NFTs on OpenSea</div>
+      <a href="https://opensea.io/collection/dino-gotchis/explore" target="_blank">OpenSea Collection</a>
+  </div>
+</div>
+<!-- NFT BLOCK END -->
 
-  // Index PIXEL by Rank
-  const pixelByRank = {};
-  pixelRows.forEach(r => {
-    const rank = parseInt(r.Rank, 10);
-    if (!rank) return;
-    pixelByRank[rank] = {
-      pixel: r.PIXEL || "",
-      usd:   r.USD || ""
-    };
-  });
+<!-- Search -->
+<div class="search-box">
+  <svg class="search-icon" viewBox="0 0 24 24">
+    <circle cx="11" cy="11" r="8"></circle><line x1="17" y1="17" x2="22" y2="22"></line>
+  </svg>
+  <input type="text" placeholder="Find yourself or a friend..." id="searchInput">
+</div>
 
-  // Index FISH by Rank
-  const fishByRank = {};
-  fishRows.forEach(r => {
-    const rank = parseInt(r.Rank, 10);
-    if (!rank) return;
-    fishByRank[rank] = {
-      usd: r.USD || ""
-    };
-  });
+<!-- Last updated -->
+<div class="last-updated" id="lastUpdated">
+  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="6" x2="12" y2="12"></line><line x1="12" y1="12" x2="16" y2="14"></line></svg>
+  Last Updated: —  
+</div>
 
-  const header = Object.keys(resultRows[0]).map(h => h.toLowerCase());
-  function col(row, name, fallback="") {
-    const idx = header.indexOf(name.toLowerCase());
-    if (idx !== -1) return row[Object.keys(row)[idx]];
-    return fallback ? row[fallback] : "";
+<!-- Leaderboard -->
+<div class="leaderboard-wrapper">
+  <div class="leaderboard-title">LEADERBOARD</div>
+  <div class="table-container">
+    <table id="leaderboard">
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Username</th>
+          <th>Score</th>
+          <th>PurpleStones</th>
+          <th>Cards rare</th>
+          <th>Cards epic</th>
+          <th>Cards legendary</th>
+          <th>NFT</th>
+          <th>$PIXEL</th>
+          <th>PIXEL USD</th>
+          <th>FISH (in USD)</th>
+          <th>Total USD</th>
+          <th>userId</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <tr>
+          <td colspan="13" style="background: #1c1431;text-align:center;">Loading…</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Bottom stats -->
+<div class="stats">
+  <div class="stat-box" style="background: #32371a;color: #f0f7ba;">
+    <div style="color:#fff;" id="qualifyingCount">–</div>
+    <div>Qualifying Players</div>
+  </div>
+  <div class="stat-box" style="background:#403533;color:#e4d57d;">
+    <div style="color:#fff;">500,000</div>
+    <div>$PIXEL Reward Pool</div>
+  </div>
+  <div class="stat-box" style="background:#2b2656;color:#c2b2dd;">
+    <div style="color:#fff;">$5000</div>
+    <div>Worth of $FISH Pool</div>
+  </div>
+</div>
+
+  <script>
+  // --- Helpers ---
+  function detectDelimiter(firstLine){
+    const candidates = [',','\t',';'];
+    const counts = {',':0,'\t':0,';':0};
+    let q=false;
+    for (let i=0;i<firstLine.length;i++){
+      const ch = firstLine[i], nx = firstLine[i+1];
+      if (ch === '"'){
+        if (q && nx === '"'){ i++; }
+        else { q=!q; }
+      }
+      else if (!q && counts.hasOwnProperty(ch)) counts[ch]++;
+    }
+    let best = ',', max=-1;
+    for (const c of candidates){ if (counts[c]>max){ max=counts[c]; best=c; } }
+    return best;
+  }
+  function parseCSV(text){
+    const content = text.replace(/\r/g,'').trim();
+    if (!content) return [];
+    const lines = content.split('\n');
+    const delim = detectDelimiter(lines[0]);
+    const rows = lines.map(line=>{
+      const out=[], n=line.length; let cur='', q=false;
+      for (let i=0;i<n;i++){
+        const ch=line[i], nx=line[i+1];
+        if (ch === '"'){
+          if (q && nx === '"'){ cur+='"'; i++; }
+          else { q=!q; }
+        } else if (ch === delim && !q){ out.push(cur); cur=''; }
+        else { cur += ch; }
+      }
+      out.push(cur);
+      return out;
+    });
+    return rows;
+  }
+  function toNumber(x){ const n=Number(String(x??'').replace(/\s|,/g,'')); return isNaN(n)?0:n; }
+  function fmtInt(n){ return Number(n||0).toLocaleString('en-US'); }
+  function fmtUSD(n){ return '$' + Number(n||0).toLocaleString('en-US', { maximumFractionDigits: 2 }); }
+  function timeAgo(fromMs){
+    const now = Date.now();
+    const diff = Math.max(0, now - fromMs);
+    const s = Math.floor(diff/1000);
+    if (s < 60) return `${s} sec ago`;
+    const m = Math.floor(s/60);
+    if (m < 60) return `${m} min ago`;
+    const h = Math.floor(m/60);
+    if (h < 24) return `${h} h ago`;
+    const d = Math.floor(h/24);
+    if (d < 30) return `${d} d ago`;
+    const mo = Math.floor(d/30);
+    if (mo < 12) return `${mo} mo ago`;
+    const y = Math.floor(mo/12);
+    return `${y} y ago`;
+  }
+  function escapeHTML(s){
+    return String(s)
+      .replaceAll('&','&amp;')
+      .replaceAll('<','&lt;')
+      .replaceAll('>','&gt;')
+      .replaceAll('"','&quot;')
+      .replaceAll("'",'&#39;');
   }
 
-  const tbody = document.querySelector("#leaderboard tbody");
-  tbody.innerHTML = "";
+  // --- Loaders ---
+  async function loadCSV(path){
+    const res = await fetch(path, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status} for ${path}`);
+    return { text: await res.text(), headers: res.headers };
+  }
 
-  resultRows.forEach(r => {
-    const rank = parseInt(col(r, "Rank"), 10) || 0;
-    if (!rank) return;
+  async function loadPixelMap(){
+    try{
+      const { text } = await loadCSV('./pixel.csv');
+      const rows = parseCSV(text);
+      if (!rows.length) return {};
+      const headers = rows[0].map(h=>String(h).trim().toLowerCase());
+      const idx = Object.fromEntries(headers.map((h,i)=>[h, i]));
+      if (!('rank' in idx)) return {};
+      const map = {};
+      for (let i=1;i<rows.length;i++){
+        const r = rows[i];
+        const rank = toNumber(r[idx['rank']]);
+        const px   = 'pixel' in idx ? toNumber(r[idx['pixel']]) : 0;
+        const usd  = ('usd' in idx) ? toNumber(r[idx['usd']]) : 0;
+        if (rank>0) map[rank] = { pixel: px, usd: usd };
+      }
+      return map;
+    }catch(_){
+      return {};
+    }
+  }
 
-    const username       = col(r, "Username");
-    const score          = col(r, "Score");
-    const purpleStones   = col(r, "PurpleStones", "Gold"); // пока Gold = PurpleStones
-    const cardsRare      = col(r, "CardsRare");
-    const cardsEpic      = col(r, "CardsEpic");
-    const cardsLegendary = col(r, "CardsLegendary");
-    const userId         = col(r, "userId");
+  async function loadFishMap(){
+    try{
+      const { text } = await loadCSV('./fish.csv');
+      const rows = parseCSV(text);
+      if (!rows.length) return {};
+      const headers = rows[0].map(h=>String(h).trim().toLowerCase());
+      const idx = Object.fromEntries(headers.map((h,i)=>[h, i]));
+      if (!('rank' in idx)) return {};
+      const map = {};
+      for (let i=1;i<rows.length;i++){
+        const r = rows[i];
+        const rank = toNumber(r[idx['rank']]);
+        const usd  = ('usd' in idx) ? toNumber(r[idx['usd']]) : 0;
+        if (rank>0) map[rank] = { usd: usd };
+      }
+      return map;
+    } catch(_) {
+      return {};
+    }
+  }
 
-    // NFT
-    const nftMult = nftByUserId[userId] || "-";
+  async function loadNftMap(){
+    try{
+      const { text } = await loadCSV('./nft_data.csv');
+      const rows = parseCSV(text);
+      if (!rows.length) return {};
+      const headers = rows[0].map(h=>String(h).trim().toLowerCase());
+      const idx = Object.fromEntries(headers.map((h,i)=>[h, i]));
+      if (!('userid' in idx)) return {};
+      const map = {};
+      for (let i=1;i<rows.length;i++){
+        const r = rows[i];
+        const userId = String(r[idx['userid']] ?? '').trim();
+        if (!userId) continue;
+        let val = '-';
+        if ('multiplier' in idx) val = String(r[idx['multiplier']] ?? '').trim();
+        else if ('nft' in idx)  val = String(r[idx['nft']] ?? '').trim();
+        map[userId] = val || '-';
+      }
+      return map;
+    } catch(_) {
+      return {};
+    }
+  }
 
-    // PIXEL
-    const px = pixelByRank[rank] || {};
-    const pixelAmount = px.pixel || "";
-    const pixelUsdRaw = px.usd || "";
-    const pixelUsd = pixelUsdRaw ? parseFloat(pixelUsdRaw) : 0;
+  // --- Load CSV and render ---
+  (async function(){
+    const lastEl = document.getElementById('lastUpdated');
+    const tbody = document.getElementById('tbody');
+    const qualifyingEl = document.getElementById('qualifyingCount');
 
-    // FISH
-    const f = fishByRank[rank] || {};
-    const fishUsdRaw = f.usd || "";
-    const fishUsd = fishUsdRaw ? parseFloat(fishUsdRaw) : 0;
+    let lastModifiedMs = null;
 
-    const totalUsd = pixelUsd + fishUsd;
+    try{
+      // Last-Modified
+      const head = await fetch('./result_data.csv', { method: 'HEAD', cache: 'no-store' }).catch(()=>null);
+      if (head && head.ok){
+        const lm = head.headers.get('last-modified');
+        if (lm){
+          const d = new Date(lm);
+          if (!isNaN(d)) lastModifiedMs = d.getTime();
+        }
+      }
 
-    const tr = document.createElement("tr");
-    function td(v) {
-      const c = document.createElement("td");
-      c.textContent = v;
-      return c;
+      // Загружаем leaderboard + rewards
+      const [{ text: csvText, headers }, pixelMap, fishMap, nftMap] = await Promise.all([
+        loadCSV('./result_data.csv'),
+        loadPixelMap(),
+        loadFishMap(),
+        loadNftMap()
+      ]);
+
+      if (!lastModifiedMs){
+        const lm2 = headers.get('last-modified');
+        if (lm2){
+          const d2 = new Date(lm2);
+          if (!isNaN(d2)) lastModifiedMs = d2.getTime();
+        }
+      }
+
+      // Парсим CSV
+      const rows = parseCSV(csvText);
+      if (!rows.length) throw new Error('CSV is empty');
+
+      const headersRow = rows[0].map(h => String(h).trim());
+      const headerLower = headersRow.map(h => h.toLowerCase());
+      const idx = Object.fromEntries(headersRow.map((h,i)=>[h.toLowerCase(), i]));
+      const has = (name) => Object.prototype.hasOwnProperty.call(idx, name.toLowerCase());
+      const gi = (row, name) => row[idx[name.toLowerCase()]];
+
+      const data = rows.slice(1).map(r=>{
+        if (!r || !r.length) return null;
+
+        const rank = has('rank') ? toNumber(gi(r,'rank')) : 0;
+        const username = has('username') ? gi(r,'username') : '';
+        const score    = has('score') ? toNumber(gi(r,'score')) : 0;
+
+        // PurpleStones (если такой колонки нет — берём Gold)
+        let purple = 0;
+        if (has('purplestones')) purple = toNumber(gi(r,'purplestones'));
+        else if (has('gold'))   purple = toNumber(gi(r,'gold'));
+
+        // Cards rare/epic/legendary
+        const cardsRare = has('cards rare')      ? toNumber(gi(r,'cards rare'))
+                        : has('cardsrare')       ? toNumber(gi(r,'cardsrare')) : 0;
+
+        const cardsEpic = has('cards epic')      ? toNumber(gi(r,'cards epic'))
+                        : has('cardsepic')       ? toNumber(gi(r,'cardsepic')) : 0;
+
+        let cardsLegendary = 0;
+        if (has('cards legendary')) cardsLegendary = toNumber(gi(r,'cards legendary'));
+        else if (has('legendary cards')) cardsLegendary = toNumber(gi(r,'legendary cards'));
+
+        const userId = has('userid') ? String(gi(r,'userid')).trim() : '';
+
+        // NFT: сначала из nftMap (по userId), если нет — из CSV
+        let nft = '-';
+        if (userId && nftMap[userId]) nft = nftMap[userId];
+        else if (has('nft')) nft = String(gi(r,'nft') ?? '-').trim();
+
+        const pixelCsv = has('pixel')      ? toNumber(gi(r,'pixel'))      : 0;
+        const usdCsv   = has('usd (ref.)') ? toNumber(gi(r,'usd (ref.)')) : 0;
+
+        return {
+          rank,
+          username,
+          score,
+          purple,
+          cardsRare,
+          cardsEpic,
+          cardsLegendary,
+          nft,
+          userId,
+          pixelCsv,
+          usdCsv
+        };
+      }).filter(Boolean);
+
+      // Сорт по Rank на всякий случай
+      data.sort((a,b)=> a.rank - b.rank);
+
+      const limited = data.slice(0, 3000);
+
+      const frag = document.createDocumentFragment();
+      for (const row of limited){
+        const prizePixel = pixelMap[row.rank] || { pixel: row.pixelCsv, usd: row.usdCsv };
+        const prizeFish  = fishMap[row.rank]  || { usd: 0 };
+
+        const pixelVal  = prizePixel.pixel || 0;
+        const pixelUsd  = prizePixel.usd   || 0;
+        const fishUsd   = prizeFish.usd    || 0;
+        const totalUsd  = (pixelUsd || 0) + (fishUsd || 0);
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${row.rank}</td>
+          <td>${escapeHTML(row.username)}</td>
+          <td>${fmtInt(row.score)}</td>
+          <td>${fmtInt(row.purple)}</td>
+          <td>${fmtInt(row.cardsRare)}</td>
+          <td>${fmtInt(row.cardsEpic)}</td>
+          <td>${fmtInt(row.cardsLegendary)}</td>
+          <td>${escapeHTML(row.nft ?? '-')}</td>
+          <td>${fmtInt(pixelVal)}</td>
+          <td>${fmtUSD(pixelUsd)}</td>
+          <td>${fmtUSD(fishUsd)}</td>
+          <td>${fmtUSD(totalUsd)}</td>
+          <td>${escapeHTML(row.userId ?? '')}</td>
+        `;
+        frag.appendChild(tr);
+      }
+      tbody.innerHTML = '';
+      tbody.appendChild(frag);
+
+      qualifyingEl.textContent = fmtInt(limited.length);
+
+      // Last Updated
+      const ts = lastModifiedMs ?? Date.now();
+      const icon = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="6" x2="12" y2="12"/><line x1="12" y1="12" x2="16" y2="14"/></svg>';
+      const renderTime = ()=> lastEl.innerHTML = `${icon} Last Updated: ${timeAgo(ts)}`;
+      renderTime();
+      setInterval(renderTime, 60_000);
+
+    } catch(e){
+      console.error(e);
+      const icon = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="6" x2="12" y2="12"/><line x1="12" y1="12" x2="16" y2="14"/></svg>';
+      lastEl.innerHTML = `${icon} Last Updated: —`;
     }
 
-    tr.appendChild(td(rank));
-    tr.appendChild(td(username));
-    tr.appendChild(td(score));
-    tr.appendChild(td(purpleStones));
-    tr.appendChild(td(cardsRare));
-    tr.appendChild(td(cardsEpic));
-    tr.appendChild(td(cardsLegendary));
-    tr.appendChild(td(nftMult));
-    tr.appendChild(td(pixelAmount));
-    tr.appendChild(td(pixelUsdRaw));
-    tr.appendChild(td(fishUsdRaw));
-    tr.appendChild(td(totalUsd ? totalUsd.toFixed(2) : ""));
-    tr.appendChild(td(userId));
+    // Search by username
+    const input = document.getElementById('searchInput');
+    input.addEventListener('input', function() {
+      const filter = input.value.toUpperCase();
+      const trs = document.getElementById('leaderboard').getElementsByTagName('tr');
+      for (let i = 1; i < trs.length; i++) {
+        const td = trs[i].getElementsByTagName('td')[1];
+        if (td) {
+          const txtValue = td.textContent || td.innerText;
+          trs[i].style.display = txtValue.toUpperCase().includes(filter) ? '' : 'none';
+        }
+      }
+    });
+  })();
+  </script>
 
-    tbody.appendChild(tr);
-  });
-}
 
-loadLeaderboard().catch(err => {
-  console.error("Leaderboard load failed:", err);
-});
-</script>
-
+</div>
 </body>
 </html>
