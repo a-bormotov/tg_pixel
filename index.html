@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-<!-- saved from url=(0070)file:///C:/Users/Celina%20Puhach/Downloads/online_viewer_net%20(1).htm -->
-<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <title>Sleepagotchi x Pixels Event</title>
   <link href="file:///C:/Users/Celina%20Puhach/Downloads/Sleepagotchi%20x%20Pixels%20Event_files/css2" rel="stylesheet">
@@ -70,9 +71,23 @@
   .opensea-box a { display:inline-block; margin-top:10px; padding:12px 20px; background:#2081e2; color:white; border-radius:8px; text-decoration:none; font-weight:bold; font-size:inherit; transition:0.2s; }
   .opensea-box a:hover { background:#166bb7; }
 
-  /* Leaderboard Title */
-  .leaderboard-wrapper { width:90%; margin:0 auto; box-sizing:border-box; }
-  .leaderboard-title { margin:0; width:100%; box-sizing:border-box; padding:10px; background:#D4AF37; color:#0A1A2F; text-align:center; font-size:20px; }
+  /* Leaderboard Title: делаем full-width секцию */
+  .leaderboard-wrapper {
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    box-sizing: border-box;
+  }
+  .leaderboard-title {
+    margin:0;
+    width:100%;
+    box-sizing:border-box;
+    padding:10px;
+    background:#D4AF37;
+    color:#0A1A2F;
+    text-align:center;
+    font-size:20px;
+  }
   </style>
 </head>
 <body>
@@ -80,7 +95,6 @@
 
 <!-- Top info -->
 <div class="top-info" style="color: #F679FF;background: #1c1431;text-align: center;padding: 10px;">
-  
   <p style="margin: 4px 0;">
     This event is open for all players to join!
   </p>
@@ -152,8 +166,9 @@
   <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="6" x2="12" y2="12"></line><line x1="12" y1="12" x2="16" y2="14"></line></svg>
   Last Updated: —  
 </div>
+</div> <!-- конец .container, дальше full-width блок -->
 
-<!-- Leaderboard -->
+<!-- Leaderboard (full width) -->
 <div class="leaderboard-wrapper">
   <div class="leaderboard-title">LEADERBOARD</div>
   <div class="table-container">
@@ -163,7 +178,7 @@
           <th>Rank</th>
           <th>Username</th>
           <th>Score</th>
-          <th>Gold</th>
+          <th>PurpleStones</th>
           <th>Cards rare</th>
           <th>Cards epic</th>
           <th>Cards legendary</th>
@@ -183,23 +198,25 @@
   </div>
 </div>
 
-<!-- Bottom stats -->
-<div class="stats">
-  <div class="stat-box" style="background: #32371a;color: #f0f7ba;">
-    <div style="color:#fff;" id="qualifyingCount">–</div>
-    <div>Qualifying Players</div>
-  </div>
-  <div class="stat-box" style="background:#403533;color:#e4d57d;">
-    <div style="color:#fff;">500,000</div>
-    <div>$PIXEL Reward Pool</div>
-  </div>
-  <div class="stat-box" style="background:#2b2656;color:#c2b2dd;">
-    <div style="color:#fff;">$5000</div>
-    <div>Worth of $FISH Pool</div>
+<!-- Bottom stats (внутри отдельного контейнера, чтобы ширина как у верхнего блока) -->
+<div class="container">
+  <div class="stats">
+    <div class="stat-box" style="background: #32371a;color: #f0f7ba;">
+      <div style="color:#fff;" id="qualifyingCount">–</div>
+      <div>Qualifying Players</div>
+    </div>
+    <div class="stat-box" style="background:#403533;color:#e4d57d;">
+      <div style="color:#fff;">500,000</div>
+      <div>$PIXEL Reward Pool</div>
+    </div>
+    <div class="stat-box" style="background:#2b2656;color:#c2b2dd;">
+      <div style="color:#fff;">$5000</div>
+      <div>Worth of $FISH Pool</div>
+    </div>
   </div>
 </div>
 
-  <script>
+<script>
   // --- Helpers ---
   function detectDelimiter(firstLine){
     const candidates = [',','\t',';'];
@@ -349,7 +366,7 @@
 
     try{
       // Last-Modified
-      const head = await fetch('./old_result_data.csv', { method: 'HEAD', cache: 'no-store' }).catch(()=>null);
+      const head = await fetch('./result_data.csv', { method: 'HEAD', cache: 'no-store' }).catch(()=>null);
       if (head && head.ok){
         const lm = head.headers.get('last-modified');
         if (lm){
@@ -360,7 +377,7 @@
 
       // Загружаем leaderboard + rewards
       const [{ text: csvText, headers }, pixelMap, fishMap, nftMap] = await Promise.all([
-        loadCSV('./old_result_data.csv'),
+        loadCSV('./result_data.csv'),
         loadPixelMap(),
         loadFishMap(),
         loadNftMap()
@@ -396,11 +413,11 @@
         else if (has('gold'))   purple = toNumber(gi(r,'gold'));
 
         // Cards rare/epic/legendary
-        const cardsRare = has('cards rare')      ? toNumber(gi(r,'cards rare'))
-                        : has('cardsrare')       ? toNumber(gi(r,'cardsrare')) : 0;
+        const cardsRare = has('cards rare') ? toNumber(gi(r,'cards rare'))
+                        : has('cardsrare')  ? toNumber(gi(r,'cardsrare')) : 0;
 
-        const cardsEpic = has('cards epic')      ? toNumber(gi(r,'cards epic'))
-                        : has('cardsepic')       ? toNumber(gi(r,'cardsepic')) : 0;
+        const cardsEpic = has('cards epic') ? toNumber(gi(r,'cards epic'))
+                        : has('cardsepic')  ? toNumber(gi(r,'cardsepic')) : 0;
 
         let cardsLegendary = 0;
         if (has('cards legendary')) cardsLegendary = toNumber(gi(r,'cards legendary'));
@@ -495,9 +512,7 @@
       }
     });
   })();
-  </script>
+</script>
 
-
-</div>
 </body>
 </html>
