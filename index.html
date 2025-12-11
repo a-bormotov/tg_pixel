@@ -41,10 +41,8 @@
   .last-updated { color:#94a3b8; font-size:12px; margin:10px 0 20px 0; }
   .last-updated svg { width:14px; height:14px; stroke:#94a3b8; stroke-width:2; fill:none; vertical-align:middle; margin-right:4px; }
 
-  /* изменено: добавил overflow-x:auto */
   .table-container { max-height:400px; overflow-y:auto; overflow-x:auto; margin:auto; width:100%; }
 
-  /* изменено: добавил min-width, остальное без изменений */
   table { border-collapse:collapse; width:100%; min-width:1200px; font-size:13px; }
   thead th { position:sticky; top:0; background:#2c394c; color:#dfe5ee; padding:8px; }
   tbody td { padding:8px; border-bottom:1px solid #2a3447; }
@@ -170,16 +168,15 @@
           <th>Cards epic</th>
           <th>Cards legendary</th>
           <th>NFT</th>
-          <th>$PIXEL</th>
+          <th>PIXEL</th>
           <th>PIXEL USD</th>
-          <th>FISH (USD)</th>
+          <th>FISH (in USD)</th>
           <th>Total USD</th>
-          <th>userId</th>
         </tr>
       </thead>
       <tbody id="tbody">
         <tr>
-          <td colspan="13" style="background: #1c1431;text-align:center;">Loading…</td>
+          <td colspan="12" style="background: #1c1431;text-align:center;">Loading…</td>
         </tr>
       </tbody>
     </table>
@@ -382,7 +379,6 @@
       if (!rows.length) throw new Error('CSV is empty');
 
       const headersRow = rows[0].map(h => String(h).trim());
-      const headerLower = headersRow.map(h => h.toLowerCase());
       const idx = Object.fromEntries(headersRow.map((h,i)=>[h.toLowerCase(), i]));
       const has = (name) => Object.prototype.hasOwnProperty.call(idx, name.toLowerCase());
       const gi = (row, name) => row[idx[name.toLowerCase()]];
@@ -464,7 +460,6 @@
           <td>${fmtUSD(pixelUsd)}</td>
           <td>${fmtUSD(fishUsd)}</td>
           <td>${fmtUSD(totalUsd)}</td>
-          <td>${escapeHTML(row.userId ?? '')}</td>
         `;
         frag.appendChild(tr);
       }
