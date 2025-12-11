@@ -352,7 +352,7 @@
 
     try{
       // Last-Modified
-      const head = await fetch('./result_data.csv', { method: 'HEAD', cache: 'no-store' }).catch(()=>null);
+      const head = await fetch('./old_result_data.csv', { method: 'HEAD', cache: 'no-store' }).catch(()=>null);
       if (head && head.ok){
         const lm = head.headers.get('last-modified');
         if (lm){
