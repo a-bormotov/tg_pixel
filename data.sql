@@ -7,8 +7,10 @@
 --   rarity = 0 -> обычные/rare
 --   rarity = 1 -> epic
 --   rarity >= 2 -> legendary
--- ВАЖНО: серии рекламы считаются внутри "пакетов" после Claim/Unlock с gold,
---        логика пакетов и серий взята из последнего файла с purpleStones.
+-- ВАЖНО:
+--  - серии рекламы считаются внутри "пакетов" после Claim/Unlock с gold,
+--  - подписка действует 31 день с момента покупки,
+--    to_ts = min(from + 31 days, next_from).
 
 WITH
 win AS (
@@ -88,15 +90,35 @@ uids AS (
   FROM ads_only
 ),
 
-/* 5) Интервалы подписки из "vipHistory": [from, next_from) */
+/* 5) Интервалы подписки из "vipHistory":
+      from_ts ... to_ts, где
+      expires_ts = from + 31 days,
+      next_from = время следующей покупки,
+      to_ts = min(expires_ts, next_from) или expires_ts, если next_from нет. */
 vip_ranges AS (
+  WITH base AS (
+    SELECT
+      v."userId",
+      v."vipLevel",
+      v."from" AS from_ts,
+      v."from" + INTERVAL '31 days' AS expires_ts,
+      LEAD(v."from") OVER (
+        PARTITION BY v."userId"
+        ORDER BY v."from"
+      ) AS next_from
+    FROM "vipHistory" v
+    JOIN uids u ON u."userId" = v."userId"
+  )
   SELECT
-    v."userId",
-    v."vipLevel",
-    v."from" AS from_ts,
-    LEAD(v."from") OVER (PARTITION BY v."userId" ORDER BY v."from") AS to_ts
-  FROM "vipHistory" v
-  JOIN uids u ON u."userId" = v."userId"
+    userId,
+    vipLevel,
+    from_ts,
+    CASE
+      WHEN next_from IS NULL
+        THEN expires_ts
+      ELSE LEAST(expires_ts, next_from)
+    END AS to_ts
+  FROM base
 ),
 
 /* 6) Назначим каждому показу актуальный vipLevel (или vip0) */
@@ -111,7 +133,7 @@ ads_with_level AS (
   LEFT JOIN vip_ranges vr
     ON  vr."userId" = a."userId"
     AND a."createdAt" >= vr.from_ts
-    AND (vr.to_ts IS NULL OR a."createdAt" < vr.to_ts)
+    AND a."createdAt" <  vr.to_ts
 ),
 
 /* 7) Порог на момент показа */
