@@ -16,7 +16,7 @@ WITH
 win AS (
   SELECT
     TIMESTAMPTZ '2025-12-08 16:00:00+00' AS win_start,
-    TIMESTAMPTZ '2025-12-15 16:00:00+00' AS win_end
+    TIMESTAMPTZ '2025-12-18 16:00:00+00' AS win_end
 ),
 
 /* 1) События в окне (для всех, кроме userId, начинающихся с 'line') */
@@ -98,9 +98,9 @@ uids AS (
 vip_ranges AS (
   WITH base AS (
     SELECT
-      v."userId",
-      v."vipLevel",
-      v."from" AS from_ts,
+      v."userId"   AS "userId",
+      v."vipLevel" AS "vipLevel",
+      v."from"     AS from_ts,
       v."from" + INTERVAL '31 days' AS expires_ts,
       LEAD(v."from") OVER (
         PARTITION BY v."userId"
@@ -110,8 +110,8 @@ vip_ranges AS (
     JOIN uids u ON u."userId" = v."userId"
   )
   SELECT
-    userId,
-    vipLevel,
+    "userId",
+    "vipLevel",
     from_ts,
     CASE
       WHEN next_from IS NULL
