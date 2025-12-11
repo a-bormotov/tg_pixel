@@ -360,7 +360,7 @@
 
       // Загружаем leaderboard + rewards
       const [{ text: csvText, headers }, pixelMap, fishMap, nftMap] = await Promise.all([
-        loadCSV('./result_data.csv'),
+        loadCSV('./old_result_data.csv'),
         loadPixelMap(),
         loadFishMap(),
         loadNftMap()
