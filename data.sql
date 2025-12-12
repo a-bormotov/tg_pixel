@@ -16,7 +16,7 @@ WITH
 win AS (
   SELECT
     TIMESTAMPTZ '2025-12-11 16:00:00+00' AS win_start,
-    TIMESTAMPTZ '2025-12-18 16:00:00+00' AS win_end
+    TIMESTAMPTZ '2025-12-17 16:00:00+00' AS win_end
 ),
 
 /* 1) События в окне (для всех, кроме userId, начинающихся с 'line') */
