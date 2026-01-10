@@ -24,7 +24,7 @@ User ID,Star Spend,Collection Power,Gold,Green Stones,Purple Stones,Max Normal C
 1050082730,0,3,2150,550,0,constellation2,
 1051677446,0,100,65150,16790,7500,constellation9,
 1052312710,0,36,4150,1880,80,constellation4,
-1052832246,0,363,3058540,305730,61390,constellation9,raidConstellation1
+1052832246,0,366,3058540,305730,61390,constellation9,raidConstellation1
 1054418457,0,3,2150,680,0,constellation2,
 1056825319,0,16,2150,1070,0,constellation2,
 1058572837,0,4,3020,630,0,constellation3,
@@ -197,7 +197,7 @@ User ID,Star Spend,Collection Power,Gold,Green Stones,Purple Stones,Max Normal C
 1377135027,0,4,2150,620,0,constellation2,
 1377702192,0,96,15070,4550,2540,constellation6,
 1380275186,0,26,3150,1550,0,constellation3,
-1387017912,0,268,806010,155550,30070,constellation9,
+1387017912,0,271,821550,155550,30120,constellation9,
 1387134516,0,4,2270,670,0,constellation2,
 1388565803,0,228,142440,31830,10300,constellation9,
 1390579611,0,331,1498440,241400,29460,constellation9,
@@ -395,7 +395,7 @@ User ID,Star Spend,Collection Power,Gold,Green Stones,Purple Stones,Max Normal C
 1779872515,0,0,1150,550,0,constellation1,
 1784060448,0,4,2150,590,0,constellation2,
 1788353071,0,194,130520,37850,13770,constellation9,
-1790603191,0,353,2802780,470890,95600,constellation9,
+1790603191,0,354,2806070,477660,96700,constellation9,
 1793909790,0,4,2150,780,0,constellation2,
 1795108638,0,17,3150,1550,0,constellation3,
 1796453865,0,116,13810,6550,1720,constellation6,
@@ -455,7 +455,7 @@ User ID,Star Spend,Collection Power,Gold,Green Stones,Purple Stones,Max Normal C
 1885270621,0,4,2150,620,0,constellation2,
 1885581296,0,183,221740,46010,16020,constellation9,
 1886640030,0,0,1150,550,0,constellation1,
-1889679858,0,325,879150,189190,32200,constellation9,
+1889679858,0,325,879150,191760,32200,constellation9,
 1890687342,0,4,2150,590,0,constellation2,
 1893640612,0,47,15950,4750,2070,constellation6,
 1894777610,0,51,3450,1770,0,constellation3,
@@ -807,7 +807,7 @@ User ID,Star Spend,Collection Power,Gold,Green Stones,Purple Stones,Max Normal C
 5284485203,0,165,39150,9550,5000,constellation8,
 5285289723,0,0,1150,550,0,constellation1,
 5285737996,0,57,6670,3550,150,constellation5,
-5287428294,0,265,297950,63960,20510,constellation9,
+5287428294,0,276,297950,66550,21100,constellation9,
 528859487,0,4,2280,850,0,constellation2,
 5289617956,0,0,1150,550,0,constellation1,
 5289834067,0,7,2150,650,0,constellation2,
@@ -946,7 +946,7 @@ User ID,Star Spend,Collection Power,Gold,Green Stones,Purple Stones,Max Normal C
 5643334304,0,4,2280,650,0,constellation2,
 5644352467,0,151,86150,23550,10300,constellation9,
 5649097266,0,204,85720,16630,6540,constellation9,
-5649563336,0,315,977370,179540,32860,constellation9,
+5649563336,0,315,993230,179540,32860,constellation9,
 5649663805,0,18,2150,580,0,constellation2,
 5650754547,0,4,4150,2840,0,constellation4,
 5651287173,0,4,2150,660,0,constellation2,
@@ -1016,7 +1016,7 @@ User ID,Star Spend,Collection Power,Gold,Green Stones,Purple Stones,Max Normal C
 5797916356,0,126,9950,4550,730,constellation5,
 5799716037,0,0,1150,550,0,constellation1,
 5802248819,0,148,44150,13550,6000,constellation9,
-580282127,0,191,248310,51550,16900,constellation9,
+580282127,0,191,248310,53550,17050,constellation9,
 580395606,0,15,2150,680,0,constellation2,
 5804235934,0,129,16310,4730,2200,constellation7,
 5805788181,0,3,2150,550,0,constellation2,
@@ -1342,7 +1342,7 @@ User ID,Star Spend,Collection Power,Gold,Green Stones,Purple Stones,Max Normal C
 6382359944,0,0,1150,550,0,constellation1,
 6383271131,0,0,1150,550,0,constellation1,
 6383848958,0,204,168150,43550,14300,constellation9,
-6383853330,0,401,4884128,577731,81608,constellation9,raidConstellation2
+6383853330,0,401,4965068,577731,81908,constellation9,raidConstellation2
 6383888504,0,157,46530,14390,6000,constellation9,
 6384937094,0,91,10100,3760,1270,constellation5,
 6388023981,0,0,1150,550,0,constellation1,
@@ -1531,7 +1531,7 @@ User ID,Star Spend,Collection Power,Gold,Green Stones,Purple Stones,Max Normal C
 6648576068,0,3,1150,550,0,constellation1,
 6652479489,0,0,1150,550,0,constellation1,
 6655802968,0,14,2150,640,0,constellation2,
-6656657766,250,556,6932550,701199,85344,constellation9,raidConstellation5
+6656657766,250,564,7035946,701199,85644,constellation9,raidConstellation6
 6657264822,0,135,58550,16960,6340,constellation9,
 6658473054,0,4,2150,670,0,constellation2,
 666753683,0,251,626720,115950,23010,constellation9,
@@ -3132,7 +3132,7 @@ User ID,Star Spend,Collection Power,Gold,Green Stones,Purple Stones,Max Normal C
 8264992132,0,0,1150,550,0,constellation1,
 8265564914,0,0,1150,550,0,constellation1,
 8268810588,0,0,1150,550,0,constellation1,
-826937972,0,53,22800,7930,3690,constellation8,
+826937972,0,54,24800,7930,3690,constellation8,
 8269996390,0,43,4290,2550,0,constellation3,
 827072126,0,30,6150,2550,0,constellation5,
 8273125503,0,47,4150,3550,1000,constellation4,
@@ -3236,7 +3236,7 @@ User ID,Star Spend,Collection Power,Gold,Green Stones,Purple Stones,Max Normal C
 8374339155,0,34,3560,1980,0,constellation3,
 8375161320,0,0,1150,550,0,constellation1,
 8376430109,0,35,5650,3550,0,constellation4,
-8380918725,0,408,8060911,864284,81660,constellation9,raidConstellation9
+8380918725,0,408,8152382,866754,82260,constellation9,raidConstellation9
 8381623109,0,4,2150,580,0,constellation2,
 8382021557,0,8,5990,3550,0,constellation4,
 8382257971,0,4,2150,730,0,constellation2,
