@@ -1,22 +1,20 @@
 -- data.sql
 -- DB1: events + "vipHistory"
--- Окно эвента: 2025-12-08 16:00:00 UTC — 2025-12-15 16:00:00 UTC
--- Ресурс: gold
--- Скор: gold * (1 + 10% * cardsLegendary)
--- Карты: любые из output (SpendGachaAction), редкость по полю rarity:
---   rarity = 0 -> обычные/rare
---   rarity = 1 -> epic
---   rarity >= 2 -> legendary
+-- Окно эвента: 2026-01-13 16:00:00 UTC — 2026-01-19 16:00:00 UTC
+-- Ресурс: greenStones
+-- Скор: greenStones * (1 + 1%*dinoRare + 3%*dinoEpic + 10%*dinoLegendary)
+-- Карты: SpendGachaAction (output-array), персонаж по item.heroType:
+--   dinoRare / dinoEpic / dinoLegendary
 -- ВАЖНО:
---  - серии рекламы считаются внутри "пакетов" после Claim/Unlock с gold,
+--  - серии рекламы считаются внутри "пакетов" после Claim/Unlock с greenStones,
 --  - подписка действует 31 день с момента покупки,
 --    to_ts = min(from + 31 days, next_from).
 
 WITH
 win AS (
   SELECT
-    TIMESTAMPTZ '2025-12-11 16:00:00+00' AS win_start,
-    TIMESTAMPTZ '2025-12-17 16:00:00+00' AS win_end
+    TIMESTAMPTZ '2026-01-05 16:00:00+00' AS win_start,
+    TIMESTAMPTZ '2026-01-19 16:00:00+00' AS win_end
 ),
 
 /* 1) События в окне (для всех, кроме userId, начинающихся с 'line') */
@@ -35,7 +33,7 @@ ewin AS (
     )
 ),
 
-/* 1.1) Пакеты: Claim/Unlock, которые реально дают gold */
+/* 1.1) Пакеты: Claim/Unlock, которые реально дают greenStones */
 ewin_with_pack AS (
   SELECT
     e.*,
@@ -43,8 +41,8 @@ ewin_with_pack AS (
       CASE
         WHEN e."name" IN ('ClaimChallengesAction','UnlockChallengeAction')
          AND (
-           NULLIF(e.payload::jsonb #>> '{output,gold,amount}','') IS NOT NULL
-           OR NULLIF(e.payload::jsonb #>> '{output,rewards,gold,amount}','') IS NOT NULL
+           NULLIF(e.payload::jsonb #>> '{output,greenStones,amount}','') IS NOT NULL
+           OR NULLIF(e.payload::jsonb #>> '{output,rewards,greenStones,amount}','') IS NOT NULL
          )
         THEN 1
         ELSE 0
@@ -57,27 +55,27 @@ ewin_with_pack AS (
   FROM ewin e
 ),
 
-/* 2) Claim/Unlock — прямые gold */
-gold_claim_unlock AS (
+/* 2) Claim/Unlock — прямые greenStones */
+green_claim_unlock AS (
   SELECT
     e."userId",
     SUM(
-      COALESCE(NULLIF(e.payload::jsonb #>> '{output,gold,amount}','')::bigint, 0) +
-      COALESCE(NULLIF(e.payload::jsonb #>> '{output,rewards,gold,amount}','')::bigint, 0)
+      COALESCE(NULLIF(e.payload::jsonb #>> '{output,greenStones,amount}','')::bigint, 0) +
+      COALESCE(NULLIF(e.payload::jsonb #>> '{output,rewards,greenStones,amount}','')::bigint, 0)
     ) AS amt
   FROM ewin_with_pack e
   WHERE e."name" IN ('ClaimChallengesAction','UnlockChallengeAction')
   GROUP BY e."userId"
 ),
 
-/* 3) Реклама (суммы gold из payload) */
+/* 3) Реклама (суммы greenStones из payload) */
 ads_only AS (
   SELECT
     e."userId",
     e."createdAt",
     e.pack_id,
     COALESCE(
-      NULLIF(e.payload::jsonb #>> '{input,rewards,gold,amount}','')::bigint,
+      NULLIF(e.payload::jsonb #>> '{input,rewards,greenStones,amount}','')::bigint,
       0
     ) AS amt
   FROM ewin_with_pack e
@@ -184,7 +182,7 @@ ads_credits AS (
 ),
 
 /* 10) Кредиты за рекламу: максимум ОДИН кредит на серию внутри пакета */
-gold_watchads AS (
+green_watchads AS (
   SELECT
     "userId",
     SUM(
@@ -194,32 +192,25 @@ gold_watchads AS (
   GROUP BY "userId"
 ),
 
-/* 11) Общая сумма gold */
-gold AS (
-  SELECT "userId", SUM(amt)::bigint AS gold
+/* 11) Общая сумма greenStones */
+green AS (
+  SELECT "userId", SUM(amt)::bigint AS "greenStones"
   FROM (
-    SELECT "userId", amt FROM gold_claim_unlock
+    SELECT "userId", amt FROM green_claim_unlock
     UNION ALL
-    SELECT "userId", amt FROM gold_watchads
+    SELECT "userId", amt FROM green_watchads
   ) x
   GROUP BY "userId"
 ),
 
-/* 12) Карты из SpendGachaAction — по rarity:
-      0 = обычные/rare, 1 = epic, 2+ = legendary */
-cards AS (
+/* 12) Dino по гаче */
+heroes AS (
   SELECT
     e."userId",
-    COUNT(*) FILTER (
-      WHERE (item->>'rarity')::int = 0
-    ) AS "cardsRare",
-    COUNT(*) FILTER (
-      WHERE (item->>'rarity')::int = 1
-    ) AS "cardsEpic",
-    COUNT(*) FILTER (
-      WHERE (item->>'rarity')::int >= 2
-    ) AS "cardsLegendary"
-  FROM ewin_with_pack e
+    COUNT(*) FILTER (WHERE (item->>'heroType') = 'dinoRare')       AS dino_rare,
+    COUNT(*) FILTER (WHERE (item->>'heroType') = 'dinoEpic')       AS dino_epic,
+    COUNT(*) FILTER (WHERE (item->>'heroType') = 'dinoLegendary')  AS dino_legendary
+  FROM ewin e
   CROSS JOIN LATERAL jsonb_array_elements(
     CASE
       WHEN jsonb_typeof(e.payload::jsonb->'output') = 'array'
@@ -231,24 +222,20 @@ cards AS (
   GROUP BY e."userId"
 )
 
-/* 13) Финальный скор: gold * (1 + 10% * cardsLegendary)
-   (редкие/эпические ни на что не влияют, но остаются в сырой статистике) */
+/* 13) Финальный скор: greenStones * (1 + Σ(dino * %)) */
 SELECT
-  COALESCE(g."userId", c."userId")        AS "userId",
-  COALESCE(g.gold, 0)::bigint            AS gold,
-  COALESCE(c."cardsRare", 0)             AS "cardsRare",
-  COALESCE(c."cardsEpic", 0)             AS "cardsEpic",
-  COALESCE(c."cardsLegendary", 0)        AS "cardsLegendary",
-  (
-    COALESCE(c."cardsRare", 0)
-  + COALESCE(c."cardsEpic", 0)
-  + COALESCE(c."cardsLegendary", 0)
-  )                                      AS "heroesMatched",
-  (COALESCE(g.gold, 0)::numeric) * (
+  COALESCE(gs."userId", h."userId") AS "userId",
+  (COALESCE(gs."greenStones", 0)::numeric) * (
       1
-    + COALESCE(c."cardsLegendary", 0) * 0.10
-  )                                      AS score
-FROM gold g
-FULL OUTER JOIN cards c
-  ON g."userId" = c."userId"
-ORDER BY score DESC, gold DESC;
+    + COALESCE(h.dino_rare, 0)      * 0.01
+    + COALESCE(h.dino_epic, 0)      * 0.03
+    + COALESCE(h.dino_legendary, 0) * 0.10
+  ) AS score,
+  COALESCE(gs."greenStones", 0)    AS "greenStones",
+  COALESCE(h.dino_rare, 0)         AS "dinoRare",
+  COALESCE(h.dino_epic, 0)         AS "dinoEpic",
+  COALESCE(h.dino_legendary, 0)    AS "dinoLegendary"
+FROM green gs
+FULL OUTER JOIN heroes h
+  ON gs."userId" = h."userId"
+ORDER BY score DESC, "greenStones" DESC;

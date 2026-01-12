@@ -145,8 +145,8 @@ def main():
     if not filtered_ids:
         with open(RESULT_CSV, "w", newline="", encoding="utf-8") as f:
             csv.writer(f).writerow(
-                ["Rank","Username","Score","Gold",
-                 "Legendary cards",
+                ["Rank","Username","Score","GreenStones",
+                 "Dino rare","Dino epic","Dino legendary",
                  "NFT","PIXEL","USD (ref.)","userId"]
             )
         print("[stop] no players left; wrote empty result_data.csv")
@@ -205,54 +205,62 @@ def main():
     ord_map = {str(r[c_uid]): r[c_ord] for r in rows1 if c_ord is not None}
 
     # ===== 4) Build result_data.csv =====
-    def idx(name):
+    cols2_lower = [c.lower() for c in cols2]
+
+    def idx(name: str):
         try:
-            return [c.lower() for c in cols2].index(name)
+            return cols2_lower.index(name)
         except ValueError:
             return None
 
-    idx_score       = idx("score")
-    idx_gold        = idx("gold")
-    idx_cards_legend = idx("cardslegendary")
-    idx_cards_tot   = idx("heroesmatched")
+    idx_score  = idx("score")
+    idx_gs     = idx("greenstones")
+    idx_dr     = idx("dinorare")
+    idx_de     = idx("dinoepic")
+    idx_dl     = idx("dinolegendary")
 
     records = []
     for r in rows2:
         uid = str(r[uid_idx])
         if uid in blacklist:
             continue
+
         username = id_to_name.get(uid, uid)
 
         base_score = float(r[idx_score]) if idx_score is not None and r[idx_score] is not None else 0.0
-        gold = int(r[idx_gold]) if idx_gold is not None and r[idx_gold] is not None else 0
-        cards_legendary = int(r[idx_cards_legend]) if idx_cards_legend is not None and r[idx_cards_legend] is not None else 0
-        cards_total = int(r[idx_cards_tot]) if idx_cards_tot is not None and r[idx_cards_tot] is not None else 0
+        green_stones = int(r[idx_gs]) if idx_gs is not None and r[idx_gs] is not None else 0
+
+        dino_rare = int(r[idx_dr]) if idx_dr is not None and r[idx_dr] is not None else 0
+        dino_epic = int(r[idx_de]) if idx_de is not None and r[idx_de] is not None else 0
+        dino_leg  = int(r[idx_dl]) if idx_dl is not None and r[idx_dl] is not None else 0
+        dino_total = dino_rare + dino_epic + dino_leg
 
         mult = float(nft_mult.get(uid, 1.0))
         final_score = base_score * mult
         order_key = ord_map.get(uid, 0)
 
-        records.append((username, final_score, gold, cards_legendary,
-                        cards_total, uid, order_key, mult))
+        records.append((username, final_score, green_stones, dino_total,
+                        dino_rare, dino_epic, dino_leg,
+                        uid, order_key, mult))
 
-    # sort by adjusted score, then gold, then total cards, then ord
-    records.sort(key=lambda x: (x[1], x[2], x[4], x[6]), reverse=True)
+    # sort by adjusted score, then greenStones, then total dino, then ord
+    records.sort(key=lambda x: (x[1], x[2], x[3], x[8]), reverse=True)
     records = records[:TOP_N]
 
-    # write CSV (with userId at the end)
     with open(RESULT_CSV, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow([
-            "Rank","Username","Score","Gold",
-            "Legendary cards",
+            "Rank","Username","Score","GreenStones",
+            "Dino rare","Dino epic","Dino legendary",
             "NFT","PIXEL","USD (ref.)","userId"
         ])
-        for i, (username, score, gold, cards_legendary,
-                cards_total, uid, _, mult) in enumerate(records, start=1):
+        for i, (username, score, green_stones, _dino_total,
+                dino_rare, dino_epic, dino_leg,
+                uid, _, mult) in enumerate(records, start=1):
             nft_col = f"{mult:.1f}" if uid in nft_mult else "-"
             w.writerow([
-                i, username, score, gold,
-                cards_legendary,
+                i, username, score, green_stones,
+                dino_rare, dino_epic, dino_leg,
                 nft_col, "-", "-", uid
             ])
 

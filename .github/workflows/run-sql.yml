@@ -1,4 +1,4 @@
-name: Run Legendary Gold event
+name: Run Dino GreenStones event
 
 on:
   workflow_dispatch: {}
@@ -26,7 +26,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install "psycopg2-binary==2.9.9" "sshtunnel==0.4.0" "paramiko==2.12.0"
 
-      - name: Run pipeline (DB1 -> raw_data.csv, DB2 -> usernames/result_data.csv)
+      - name: Run pipeline (events -> raw_data.csv, usernames -> result_data.csv)
         env:
           # SSH
           SSH_HOST: ${{ secrets.SSH_HOST }}
@@ -35,21 +35,21 @@ jobs:
           SSH_KEY:  ${{ secrets.SSH_KEY }}
           SSH_KEY_PASSWORD: ${{ secrets.SSH_KEY_PASSWORD }}
 
-          # DB1 (events + vipHistory)
+          # DB1 (users -> usernames)   <-- проверь: у тебя DB1 используется для user_data.sql
           DB1_HOST: ${{ secrets.DB1_HOST }}
           DB1_PORT: ${{ secrets.DB1_PORT }}
           DB1_NAME: ${{ secrets.DB1_NAME }}
           DB1_USER: ${{ secrets.DB1_USER }}
           DB1_PASS: ${{ secrets.DB1_PASS }}
 
-          # DB2 (users + users_additional)
+          # DB2 (events + vipHistory) <-- проверь: у тебя DB2 используется для data.sql
           DB2_HOST: ${{ secrets.DB2_HOST }}
           DB2_PORT: ${{ secrets.DB2_PORT }}
           DB2_NAME: ${{ secrets.DB2_NAME }}
           DB2_USER: ${{ secrets.DB2_USER }}
           DB2_PASS: ${{ secrets.DB2_PASS }}
 
-          # файлы
+          # files
           SQL_FILE: "data.sql"
           USER_SQL_FILE: "user_data.sql"
           OUTPUT_CSV: "raw_data.csv"
@@ -66,6 +66,6 @@ jobs:
             echo "No changes — skip commit/push."
             exit 0
           fi
-          git commit -m "Update Legendary Gold event CSVs [skip ci]"
+          git commit -m "Update Dino GreenStones event CSVs [skip ci]"
           git pull --rebase --autostash origin "${{ github.ref_name }}"
           git push origin HEAD:"${{ github.ref_name }}"
