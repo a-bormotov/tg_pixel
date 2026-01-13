@@ -346,7 +346,7 @@
 
     try{
       // Last-Modified
-      const head = await fetch('./result_data.csv', { method: 'HEAD', cache: 'no-store' })
+      const head = await fetch('./empty_data.csv', { method: 'HEAD', cache: 'no-store' })
         .catch(()=>fetch('./empty_data.csv', { method: 'HEAD', cache: 'no-store' }).catch(()=>null));
       if (head && head.ok){
         const lm = head.headers.get('last-modified');
@@ -358,7 +358,7 @@
 
       // Загружаем leaderboard + rewards
       const [{ text: csvText, headers }, pixelMap, nftMap] = await Promise.all([
-        loadCSV('./result_data.csv').catch(()=>loadCSV('./empty_data.csv')),
+        loadCSV('./empty_data.csv').catch(()=>loadCSV('./empty_data.csv')),
         loadPixelMap(),
         loadNftMap()
       ]);
