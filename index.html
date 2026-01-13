@@ -181,12 +181,12 @@
           <th>Rank</th>
           <th>Username</th>
           <th>Score</th>
-          <th>Green</th>
-          <th>Rare</th><th>Epic</th><th>Legendary</th>
+          <th>GreenStones</th>
+          <th>Dino Rare</th>
+          <th>Dino Epic</th>
+          <th>Dino Legendary</th>
           <th>NFT</th>
           <th>$PIXEL</th>
-          
-          
           <th>USD</th>
         </tr>
       </thead>
@@ -312,27 +312,6 @@
     }
   }
 
-  async function loadFishMap(){
-    try{
-      const { text } = await loadCSV('./fish.csv');
-      const rows = parseCSV(text);
-      if (!rows.length) return {};
-      const headers = rows[0].map(h=>String(h).trim().toLowerCase());
-      const idx = Object.fromEntries(headers.map((h,i)=>[h, i]));
-      if (!('rank' in idx)) return {};
-      const map = {};
-      for (let i=1;i<rows.length;i++){
-        const r = rows[i];
-        const rank = toNumber(r[idx['rank']]);
-        const usd  = ('usd' in idx) ? toNumber(r[idx['usd']]) : 0;
-        if (rank>0) map[rank] = { usd: usd };
-      }
-      return map;
-    } catch(_) {
-      return {};
-    }
-  }
-
   async function loadNftMap(){
     try{
       const { text } = await loadCSV('./nft_data.csv');
@@ -367,7 +346,8 @@
 
     try{
       // Last-Modified
-      const head = await fetch('./empty_data.csv', { method: 'HEAD', cache: 'no-store' }).catch(()=>null);
+      const head = await fetch('./result_data.csv', { method: 'HEAD', cache: 'no-store' })
+        .catch(()=>fetch('./empty_data.csv', { method: 'HEAD', cache: 'no-store' }).catch(()=>null));
       if (head && head.ok){
         const lm = head.headers.get('last-modified');
         if (lm){
@@ -377,10 +357,9 @@
       }
 
       // Загружаем leaderboard + rewards
-      const [{ text: csvText, headers }, pixelMap, fishMap, nftMap] = await Promise.all([
-        loadCSV('./empty_data.csv'),
+      const [{ text: csvText, headers }, pixelMap, nftMap] = await Promise.all([
+        loadCSV('./result_data.csv').catch(()=>loadCSV('./empty_data.csv')),
         loadPixelMap(),
-        loadFishMap(),
         loadNftMap()
       ]);
 
@@ -404,19 +383,26 @@
       const data = rows.slice(1).map(r=>{
         if (!r || !r.length) return null;
 
-        const rank = has('rank') ? toNumber(gi(r,'rank')) : 0;
+        const rank     = has('rank') ? toNumber(gi(r,'rank')) : 0;
         const username = has('username') ? gi(r,'username') : '';
         const score    = has('score') ? toNumber(gi(r,'score')) : 0;
 
-        // Gold (если нет — берём PurpleStones как запасной вариант)
-        let gold = 0;
-        if (has('gold')) gold = toNumber(gi(r,'gold'));
-        else if (has('purplestones')) gold = toNumber(gi(r,'purplestones'));
+        // greenStones
+        let greenStones = 0;
+        if (has('greenstones')) greenStones = toNumber(gi(r,'greenstones'));
+        else if (has('green')) greenStones = toNumber(gi(r,'green'));
 
-        // Только легендарные карты
-        let cardsLegendary = 0;
-        if (has('cards legendary')) cardsLegendary = toNumber(gi(r,'cards legendary'));
-        else if (has('legendary cards')) cardsLegendary = toNumber(gi(r,'legendary cards'));
+        // Dino columns (из result_data.csv: "Dino rare"/"Dino epic"/"Dino legendary")
+        let dinoRare = 0, dinoEpic = 0, dinoLegendary = 0;
+
+        if (has('dino rare')) dinoRare = toNumber(gi(r,'dino rare'));
+        else if (has('dinorare')) dinoRare = toNumber(gi(r,'dinorare'));
+
+        if (has('dino epic')) dinoEpic = toNumber(gi(r,'dino epic'));
+        else if (has('dinoepic')) dinoEpic = toNumber(gi(r,'dinoepic'));
+
+        if (has('dino legendary')) dinoLegendary = toNumber(gi(r,'dino legendary'));
+        else if (has('dinolegendary')) dinoLegendary = toNumber(gi(r,'dinolegendary'));
 
         const userId = has('userid') ? String(gi(r,'userid')).trim() : '';
 
@@ -425,19 +411,17 @@
         if (userId && nftMap[userId]) nft = nftMap[userId];
         else if (has('nft')) nft = String(gi(r,'nft') ?? '-').trim();
 
-        const pixelCsv = has('pixel')      ? toNumber(gi(r,'pixel'))      : 0;
-        const usdCsv   = has('usd (ref.)') ? toNumber(gi(r,'usd (ref.)')) : 0;
+        // prize из pixelMap (если есть), иначе из CSV
+        const pixelCsv = has('pixel') ? toNumber(gi(r,'pixel')) : 0;
+        const usdCsv =
+          has('usd') ? toNumber(gi(r,'usd')) :
+          (has('usd (ref.)') ? toNumber(gi(r,'usd (ref.)')) : 0);
 
         return {
-          rank,
-          username,
-          score,
-          gold,
-          cardsLegendary,
-          nft,
-          userId,
-          pixelCsv,
-          usdCsv
+          rank, username, score,
+          greenStones, dinoRare, dinoEpic, dinoLegendary,
+          nft, userId,
+          pixelCsv, usdCsv
         };
       }).filter(Boolean);
 
@@ -448,26 +432,22 @@
 
       const frag = document.createDocumentFragment();
       for (const row of limited){
-        const prizePixel = pixelMap[row.rank] || { pixel: row.pixelCsv, usd: row.usdCsv };
-        const prizeFish  = fishMap[row.rank]  || { usd: 0 };
-
-        const pixelVal  = prizePixel.pixel || 0;
-        const pixelUsd  = prizePixel.usd   || 0;
-        const fishUsd   = prizeFish.usd    || 0;
-        const totalUsd  = (pixelUsd || 0) + (fishUsd || 0);
+        const prize = pixelMap[row.rank] || { pixel: row.pixelCsv, usd: row.usdCsv };
+        const pixelVal = prize.pixel || 0;
+        const usdVal   = prize.usd   || 0;
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${row.rank}</td>
           <td>${escapeHTML(row.username)}</td>
           <td>${fmtInt(row.score)}</td>
-          <td>${fmtInt(row.gold)}</td>
-          <td>${fmtInt(row.cardsLegendary)}</td>
+          <td>${fmtInt(row.greenStones)}</td>
+          <td>${fmtInt(row.dinoRare)}</td>
+          <td>${fmtInt(row.dinoEpic)}</td>
+          <td>${fmtInt(row.dinoLegendary)}</td>
           <td>${escapeHTML(row.nft ?? '-')}</td>
           <td>${fmtInt(pixelVal)}</td>
-          <td>${fmtUSD(pixelUsd)}</td>
-          <td>${fmtUSD(fishUsd)}</td>
-          <td>${fmtUSD(totalUsd)}</td>
+          <td>${fmtUSD(usdVal)}</td>
         `;
         frag.appendChild(tr);
       }
