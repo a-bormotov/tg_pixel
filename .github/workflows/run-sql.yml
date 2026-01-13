@@ -2,6 +2,7 @@ name: Run Dino GreenStones event
 
 on:
   workflow_dispatch: {}
+    - cron: "55 * * * *"   # каждый час, в 55 минут UTC
 
 permissions:
   contents: write
