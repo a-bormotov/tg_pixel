@@ -142,17 +142,7 @@ def main():
     filtered_ids = [u for u in user_ids if u not in blacklist]
     print(f"[2] blacklist filtered: {len(user_ids)} -> {len(filtered_ids)}")
 
-    if not filtered_ids:
-        with open(RESULT_CSV, "w", newline="", encoding="utf-8") as f:
-            csv.writer(f).writerow(
-                ["Rank","Username","Score","GreenStones",
-                 "Dino rare","Dino epic","Dino legendary",
-                 "NFT","PIXEL","USD (ref.)","userId"]
-            )
-        print("[stop] no players left; wrote empty result_data.csv")
-        return
-
-    # ===== 2.5) NFT multipliers =====
+    # ===== 2.5) NFT multipliers (and eligibility) =====
     nft_mult = {}
     if os.path.exists(NFT_FILE):
         try:
@@ -174,7 +164,21 @@ def main():
         except Exception as e:
             print(f"[warn] failed to read {NFT_FILE}: {e}")
     else:
-        print("[info] nft_data.csv not found; NFT multiplier defaults to 1.0")
+        print("[info] nft_data.csv not found; no eligible players by NFT rule")
+
+    before = len(filtered_ids)
+    filtered_ids = [u for u in filtered_ids if u in nft_mult]
+    print(f"[2.6] nft eligibility filtered: {before} -> {len(filtered_ids)}")
+
+    if not filtered_ids:
+        with open(RESULT_CSV, "w", newline="", encoding="utf-8") as f:
+            csv.writer(f).writerow(
+                ["Rank","Username","Score","Points",
+                 "Gacha rare","Gacha epic","Gacha legendary",
+                 "NFT","PIXEL","USD (ref.)","userId"]
+            )
+        print("[stop] no eligible players left; wrote empty result_data.csv")
+        return
 
     # ===== 3) DB1 -> usernames =====
     if "{IDS}" in sql_user_tpl:
@@ -213,55 +217,56 @@ def main():
         except ValueError:
             return None
 
-    idx_score  = idx("score")
-    idx_gs     = idx("greenstones")
-    idx_dr     = idx("dinorare")
-    idx_de     = idx("dinoepic")
-    idx_dl     = idx("dinolegendary")
+    idx_score = idx("score")
+    idx_pts   = idx("points")
+    idx_r     = idx("rare")
+    idx_e     = idx("epic")
+    idx_l     = idx("legendary")
 
     records = []
     for r in rows2:
         uid = str(r[uid_idx])
         if uid in blacklist:
             continue
+        if uid not in nft_mult:
+            continue  # eligibility
 
         username = id_to_name.get(uid, uid)
 
         base_score = float(r[idx_score]) if idx_score is not None and r[idx_score] is not None else 0.0
-        green_stones = int(r[idx_gs]) if idx_gs is not None and r[idx_gs] is not None else 0
+        points = int(r[idx_pts]) if idx_pts is not None and r[idx_pts] is not None else 0
 
-        dino_rare = int(r[idx_dr]) if idx_dr is not None and r[idx_dr] is not None else 0
-        dino_epic = int(r[idx_de]) if idx_de is not None and r[idx_de] is not None else 0
-        dino_leg  = int(r[idx_dl]) if idx_dl is not None and r[idx_dl] is not None else 0
-        dino_total = dino_rare + dino_epic + dino_leg
+        gacha_rare = int(r[idx_r]) if idx_r is not None and r[idx_r] is not None else 0
+        gacha_epic = int(r[idx_e]) if idx_e is not None and r[idx_e] is not None else 0
+        gacha_leg  = int(r[idx_l]) if idx_l is not None and r[idx_l] is not None else 0
+        gacha_total = gacha_rare + gacha_epic + gacha_leg
 
-        mult = float(nft_mult.get(uid, 1.0))
+        mult = float(nft_mult[uid])
         final_score = base_score * mult
         order_key = ord_map.get(uid, 0)
 
-        records.append((username, final_score, green_stones, dino_total,
-                        dino_rare, dino_epic, dino_leg,
+        records.append((username, final_score, points, gacha_total,
+                        gacha_rare, gacha_epic, gacha_leg,
                         uid, order_key, mult))
 
-    # sort by adjusted score, then greenStones, then total dino, then ord
+    # sort by adjusted score, then points, then total gacha, then ord
     records.sort(key=lambda x: (x[1], x[2], x[3], x[8]), reverse=True)
     records = records[:TOP_N]
 
     with open(RESULT_CSV, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow([
-            "Rank","Username","Score","GreenStones",
-            "Dino rare","Dino epic","Dino legendary",
+            "Rank","Username","Score","Points",
+            "Gacha rare","Gacha epic","Gacha legendary",
             "NFT","PIXEL","USD (ref.)","userId"
         ])
-        for i, (username, score, green_stones, _dino_total,
-                dino_rare, dino_epic, dino_leg,
+        for i, (username, score, points, _gacha_total,
+                gacha_rare, gacha_epic, gacha_leg,
                 uid, _, mult) in enumerate(records, start=1):
-            nft_col = f"{mult:.1f}" if uid in nft_mult else "-"
             w.writerow([
-                i, username, score, green_stones,
-                dino_rare, dino_epic, dino_leg,
-                nft_col, "-", "-", uid
+                i, username, score, points,
+                gacha_rare, gacha_epic, gacha_leg,
+                f"{mult:.1f}", "-", "-", uid
             ])
 
     print(f"[4] wrote {RESULT_CSV}: {len(records)} rows (top {TOP_N}, NFT multipliers applied)")

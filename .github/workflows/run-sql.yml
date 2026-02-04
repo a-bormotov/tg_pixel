@@ -1,4 +1,4 @@
-name: Run Dino GreenStones event
+name: Run NFT Points event
 
 on:
   workflow_dispatch: {}
@@ -35,14 +35,14 @@ jobs:
           SSH_KEY:  ${{ secrets.SSH_KEY }}
           SSH_KEY_PASSWORD: ${{ secrets.SSH_KEY_PASSWORD }}
 
-          # DB1 (users -> usernames)   <-- проверь: у тебя DB1 используется для user_data.sql
+          # DB1 (users -> usernames)
           DB1_HOST: ${{ secrets.DB1_HOST }}
           DB1_PORT: ${{ secrets.DB1_PORT }}
           DB1_NAME: ${{ secrets.DB1_NAME }}
           DB1_USER: ${{ secrets.DB1_USER }}
           DB1_PASS: ${{ secrets.DB1_PASS }}
 
-          # DB2 (events + vipHistory) <-- проверь: у тебя DB2 используется для data.sql
+          # DB2 (events + vipHistory)
           DB2_HOST: ${{ secrets.DB2_HOST }}
           DB2_PORT: ${{ secrets.DB2_PORT }}
           DB2_NAME: ${{ secrets.DB2_NAME }}
@@ -66,6 +66,6 @@ jobs:
             echo "No changes — skip commit/push."
             exit 0
           fi
-          git commit -m "Update Dino GreenStones event CSVs [skip ci]"
+          git commit -m "Update NFT Points event CSVs [skip ci]"
           git pull --rebase --autostash origin "${{ github.ref_name }}"
           git push origin HEAD:"${{ github.ref_name }}"

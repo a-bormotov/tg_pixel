@@ -131,9 +131,7 @@
 
 <!-- NFT BLOCK START -->
 <div class="nft-section">
-  <div class="nft-rules" style="
-    /* color: #4CAF50; */
-">
+<div class="nft-rules">
       <h3 style="
     color: #4CAF50;
 ">Rules for NFT Multiplier</h3>
@@ -182,10 +180,10 @@
           <th>Rank</th>
           <th>Username</th>
           <th>Score</th>
-          <th>GreenStones</th>
-          <th>Dino Rare</th>
-          <th>Dino Epic</th>
-          <th>Dino Legendary</th>
+          <th>Points</th>
+          <th>Gacha Rare</th>
+          <th>Gacha Epic</th>
+          <th>Gacha Legendary</th>
           <th>NFT</th>
           <th>$PIXEL</th>
           <th>USD</th>
@@ -388,22 +386,22 @@
         const username = has('username') ? gi(r,'username') : '';
         const score    = has('score') ? toNumber(gi(r,'score')) : 0;
 
-        // greenStones
-        let greenStones = 0;
-        if (has('greenstones')) greenStones = toNumber(gi(r,'greenstones'));
-        else if (has('green')) greenStones = toNumber(gi(r,'green'));
+        // points
+        let points = 0;
+        if (has('points')) points = toNumber(gi(r,'points'));
+        else if (has('point')) points = toNumber(gi(r,'point'));
 
-        // Dino columns (из result_data.csv: "Dino rare"/"Dino epic"/"Dino legendary")
-        let dinoRare = 0, dinoEpic = 0, dinoLegendary = 0;
+        // Gacha columns (из result_data.csv: "Gacha rare"/"Gacha epic"/"Gacha legendary")
+        let gachaRare = 0, gachaEpic = 0, gachaLegendary = 0;
 
-        if (has('dino rare')) dinoRare = toNumber(gi(r,'dino rare'));
-        else if (has('dinorare')) dinoRare = toNumber(gi(r,'dinorare'));
+        if (has('gacha rare')) gachaRare = toNumber(gi(r,'gacha rare'));
+        else if (has('rare')) gachaRare = toNumber(gi(r,'rare'));
 
-        if (has('dino epic')) dinoEpic = toNumber(gi(r,'dino epic'));
-        else if (has('dinoepic')) dinoEpic = toNumber(gi(r,'dinoepic'));
+        if (has('gacha epic')) gachaEpic = toNumber(gi(r,'gacha epic'));
+        else if (has('epic')) gachaEpic = toNumber(gi(r,'epic'));
 
-        if (has('dino legendary')) dinoLegendary = toNumber(gi(r,'dino legendary'));
-        else if (has('dinolegendary')) dinoLegendary = toNumber(gi(r,'dinolegendary'));
+        if (has('gacha legendary')) gachaLegendary = toNumber(gi(r,'gacha legendary'));
+        else if (has('legendary')) gachaLegendary = toNumber(gi(r,'legendary'));
 
         const userId = has('userid') ? String(gi(r,'userid')).trim() : '';
 
@@ -420,7 +418,7 @@
 
         return {
           rank, username, score,
-          greenStones, dinoRare, dinoEpic, dinoLegendary,
+          points, gachaRare, gachaEpic, gachaLegendary,
           nft, userId,
           pixelCsv, usdCsv
         };
@@ -442,10 +440,10 @@
           <td>${row.rank}</td>
           <td>${escapeHTML(row.username)}</td>
           <td>${fmtInt(row.score)}</td>
-          <td>${fmtInt(row.greenStones)}</td>
-          <td>${fmtInt(row.dinoRare)}</td>
-          <td>${fmtInt(row.dinoEpic)}</td>
-          <td>${fmtInt(row.dinoLegendary)}</td>
+          <td>${fmtInt(row.points)}</td>
+          <td>${fmtInt(row.gachaRare)}</td>
+          <td>${fmtInt(row.gachaEpic)}</td>
+          <td>${fmtInt(row.gachaLegendary)}</td>
           <td>${escapeHTML(row.nft ?? '-')}</td>
           <td>${fmtInt(pixelVal)}</td>
           <td>${fmtUSD(usdVal)}</td>
@@ -466,7 +464,7 @@
 
     } catch(e){
       console.error(e);
-      const icon = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="6" x2="12" y2="12"/><line x1="12" y1="12" x2="16" y2="14"/></svg>';
+      const icon = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="6" x2="12" y1="12"/><line x1="12" y1="12" x2="16" y2="14"/></svg>';
       lastEl.innerHTML = `${icon} Last Updated: —`;
     }
 

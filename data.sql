@@ -1,23 +1,23 @@
 -- data.sql
--- DB1: events + "vipHistory"
--- Окно эвента: 2026-01-13 16:00:00 UTC — 2026-01-19 16:00:00 UTC
--- Ресурс: greenStones
--- Скор: greenStones * (1 + 1%*dinoRare + 3%*dinoEpic + 10%*dinoLegendary)
--- Карты: SpendGachaAction (output-array), персонаж по item.heroType:
---   dinoRare / dinoEpic / dinoLegendary
--- ВАЖНО:
---  - серии рекламы считаются внутри "пакетов" после Claim/Unlock с greenStones,
---  - подписка действует 31 день с момента покупки,
+-- DB2: events + "vipHistory" (table in same DB as before)
+-- Window: 2026-02-05 16:00:00 UTC — 2026-02-12 16:00:00 UTC
+-- Resource: points
+-- Score: points + (rare*1 + epic*5 + legendary*50)
+-- Gacha: SpendGachaAction output-array, rarity field:
+--   rarity=0 rare, rarity=1 epic, rarity=2 legendary
+-- IMPORTANT (unchanged):
+--  - ad series counted inside "packs" after Claim/Unlock with points
+--  - subscription valid 31 days from purchase,
 --    to_ts = min(from + 31 days, next_from).
 
 WITH
 win AS (
   SELECT
-    TIMESTAMPTZ '2026-01-13 16:00:00+00' AS win_start,
-    TIMESTAMPTZ '2026-01-20 16:00:00+00' AS win_end
+    TIMESTAMPTZ '2026-02-05 16:00:00+00' AS win_start,
+    TIMESTAMPTZ '2026-02-12 16:00:00+00' AS win_end
 ),
 
-/* 1) События в окне (для всех, кроме userId, начинающихся с 'line') */
+/* 1) Events in window (exclude userId starting with 'line') */
 ewin AS (
   SELECT e.*
   FROM events e
@@ -33,7 +33,7 @@ ewin AS (
     )
 ),
 
-/* 1.1) Пакеты: Claim/Unlock, которые реально дают greenStones */
+/* 1.1) Packs: Claim/Unlock that actually give points */
 ewin_with_pack AS (
   SELECT
     e.*,
@@ -41,8 +41,8 @@ ewin_with_pack AS (
       CASE
         WHEN e."name" IN ('ClaimChallengesAction','UnlockChallengeAction')
          AND (
-           NULLIF(e.payload::jsonb #>> '{output,greenStones,amount}','') IS NOT NULL
-           OR NULLIF(e.payload::jsonb #>> '{output,rewards,greenStones,amount}','') IS NOT NULL
+           NULLIF(e.payload::jsonb #>> '{output,points,amount}','') IS NOT NULL
+           OR NULLIF(e.payload::jsonb #>> '{output,rewards,points,amount}','') IS NOT NULL
          )
         THEN 1
         ELSE 0
@@ -55,44 +55,40 @@ ewin_with_pack AS (
   FROM ewin e
 ),
 
-/* 2) Claim/Unlock — прямые greenStones */
-green_claim_unlock AS (
+/* 2) Claim/Unlock — direct points */
+points_claim_unlock AS (
   SELECT
     e."userId",
     SUM(
-      COALESCE(NULLIF(e.payload::jsonb #>> '{output,greenStones,amount}','')::bigint, 0) +
-      COALESCE(NULLIF(e.payload::jsonb #>> '{output,rewards,greenStones,amount}','')::bigint, 0)
+      COALESCE(NULLIF(e.payload::jsonb #>> '{output,points,amount}','')::bigint, 0) +
+      COALESCE(NULLIF(e.payload::jsonb #>> '{output,rewards,points,amount}','')::bigint, 0)
     ) AS amt
   FROM ewin_with_pack e
   WHERE e."name" IN ('ClaimChallengesAction','UnlockChallengeAction')
   GROUP BY e."userId"
 ),
 
-/* 3) Реклама (суммы greenStones из payload) */
+/* 3) Ads (points amount from payload) */
 ads_only AS (
   SELECT
     e."userId",
     e."createdAt",
     e.pack_id,
     COALESCE(
-      NULLIF(e.payload::jsonb #>> '{input,rewards,greenStones,amount}','')::bigint,
+      NULLIF(e.payload::jsonb #>> '{input,rewards,points,amount}','')::bigint,
       0
     ) AS amt
   FROM ewin_with_pack e
   WHERE e."name" = 'WatchAdsPostHookAction'
 ),
 
-/* 4) Ограничим историю подписок только нужными игроками (те, у кого есть реклама) */
+/* 4) Limit vip history only to users who have ads */
 uids AS (
   SELECT DISTINCT "userId"
   FROM ads_only
 ),
 
-/* 5) Интервалы подписки из "vipHistory":
-      from_ts ... to_ts, где
-      expires_ts = from + 31 days,
-      next_from = время следующей покупки,
-      to_ts = min(expires_ts, next_from) или expires_ts, если next_from нет. */
+/* 5) Subscription ranges from "vipHistory" (unchanged) */
 vip_ranges AS (
   WITH base AS (
     SELECT
@@ -119,7 +115,7 @@ vip_ranges AS (
   FROM base
 ),
 
-/* 6) Назначим каждому показу актуальный vipLevel (или vip0) */
+/* 6) Assign current vipLevel per ad (or vip0) */
 ads_with_level AS (
   SELECT
     a."userId",
@@ -134,7 +130,7 @@ ads_with_level AS (
     AND a."createdAt" <  vr.to_ts
 ),
 
-/* 7) Порог на момент показа */
+/* 7) Threshold per ad view */
 ads_with_threshold AS (
   SELECT
     "userId",
@@ -150,7 +146,7 @@ ads_with_threshold AS (
   FROM ads_with_level
 ),
 
-/* 8) Серии подряд одинаковых (amt, threshold) ВНУТРИ ОДНОГО pack_id */
+/* 8) Runs of same (amt, threshold) inside same pack_id */
 ads_series AS (
   SELECT
     a.*,
@@ -168,7 +164,7 @@ ads_series AS (
   FROM ads_with_threshold a
 ),
 
-/* 9) Агрегируем серию */
+/* 9) Aggregate each run */
 ads_credits AS (
   SELECT
     "userId",
@@ -181,8 +177,8 @@ ads_credits AS (
   GROUP BY "userId", pack_id, grp
 ),
 
-/* 10) Кредиты за рекламу: максимум ОДИН кредит на серию внутри пакета */
-green_watchads AS (
+/* 10) Credits from ads: max ONE credit per run inside pack */
+points_watchads AS (
   SELECT
     "userId",
     SUM(
@@ -192,24 +188,32 @@ green_watchads AS (
   GROUP BY "userId"
 ),
 
-/* 11) Общая сумма greenStones */
-green AS (
-  SELECT "userId", SUM(amt)::bigint AS "greenStones"
+/* 11) Total points (claim/unlock + ads credits) */
+points AS (
+  SELECT "userId", SUM(amt)::bigint AS "points"
   FROM (
-    SELECT "userId", amt FROM green_claim_unlock
+    SELECT "userId", amt FROM points_claim_unlock
     UNION ALL
-    SELECT "userId", amt FROM green_watchads
+    SELECT "userId", amt FROM points_watchads
   ) x
   GROUP BY "userId"
 ),
 
-/* 12) Dino по гаче */
-heroes AS (
+/* 12) Gacha: rarity counts + points from cards */
+gacha AS (
   SELECT
     e."userId",
-    COUNT(*) FILTER (WHERE (item->>'heroType') = 'dinoRare')       AS dino_rare,
-    COUNT(*) FILTER (WHERE (item->>'heroType') = 'dinoEpic')       AS dino_epic,
-    COUNT(*) FILTER (WHERE (item->>'heroType') = 'dinoLegendary')  AS dino_legendary
+    COUNT(*) FILTER (WHERE rarity_num = 0) AS rare,
+    COUNT(*) FILTER (WHERE rarity_num = 1) AS epic,
+    COUNT(*) FILTER (WHERE rarity_num = 2) AS legendary,
+    SUM(
+      CASE rarity_num
+        WHEN 0 THEN 1
+        WHEN 1 THEN 5
+        WHEN 2 THEN 50
+        ELSE 0
+      END
+    )::bigint AS gacha_points
   FROM ewin e
   CROSS JOIN LATERAL jsonb_array_elements(
     CASE
@@ -218,24 +222,28 @@ heroes AS (
       ELSE '[]'::jsonb
     END
   ) AS item
+  CROSS JOIN LATERAL (
+    SELECT
+      CASE
+        WHEN (item ? 'rarity')
+         AND (item->>'rarity') ~ '^\d+$'
+          THEN (item->>'rarity')::int
+        ELSE NULL
+      END AS rarity_num
+  ) r
   WHERE e."name" = 'SpendGachaAction'
   GROUP BY e."userId"
 )
 
-/* 13) Финальный скор: greenStones * (1 + Σ(dino * %)) */
+/* 13) Final score */
 SELECT
-  COALESCE(gs."userId", h."userId") AS "userId",
-  (COALESCE(gs."greenStones", 0)::numeric) * (
-      1
-    + COALESCE(h.dino_rare, 0)      * 0.01
-    + COALESCE(h.dino_epic, 0)      * 0.03
-    + COALESCE(h.dino_legendary, 0) * 0.10
-  ) AS score,
-  COALESCE(gs."greenStones", 0)    AS "greenStones",
-  COALESCE(h.dino_rare, 0)         AS "dinoRare",
-  COALESCE(h.dino_epic, 0)         AS "dinoEpic",
-  COALESCE(h.dino_legendary, 0)    AS "dinoLegendary"
-FROM green gs
-FULL OUTER JOIN heroes h
-  ON gs."userId" = h."userId"
-ORDER BY score DESC, "greenStones" DESC;
+  COALESCE(p."userId", g."userId") AS "userId",
+  (COALESCE(p."points", 0) + COALESCE(g.gacha_points, 0))::numeric AS score,
+  COALESCE(p."points", 0) AS "points",
+  COALESCE(g.rare, 0) AS "rare",
+  COALESCE(g.epic, 0) AS "epic",
+  COALESCE(g.legendary, 0) AS "legendary"
+FROM points p
+FULL OUTER JOIN gacha g
+  ON p."userId" = g."userId"
+ORDER BY score DESC, "points" DESC;
