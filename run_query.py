@@ -1,5 +1,6 @@
 import os, sys, csv, tempfile
 import psycopg2
+import math
 from sshtunnel import SSHTunnelForwarder
 
 SQL_FILE       = os.environ.get("SQL_FILE", "data.sql")
@@ -242,7 +243,7 @@ def main():
         gacha_total = gacha_rare + gacha_epic + gacha_leg
 
         mult = float(nft_mult[uid])
-        final_score = base_score * mult
+        final_score = int(math.ceil(base_score * mult))
         order_key = ord_map.get(uid, 0)
 
         records.append((username, final_score, points, gacha_total,
