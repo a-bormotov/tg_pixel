@@ -232,273 +232,85 @@ tbody td { padding:8px; border-bottom:1px solid rgba(255,255,255,0.15); }
     </div>
   </div>
 </div>
-  
+
 <script>
-  // --- Helpers ---
-  function detectDelimiter(firstLine){
-    const candidates = [',','\t',';'];
-    const counts = {',':0,'\t':0,';':0};
-    let q=false;
-    for (let i=0;i<firstLine.length;i++){
-      const ch = firstLine[i], nx = firstLine[i+1];
-      if (ch === '"'){
-        if (q && nx === '"'){ i++; }
-        else { q=!q; }
-      }
-      else if (!q && counts.hasOwnProperty(ch)) counts[ch]++;
+// --- Helpers ---
+function escapeHTML(s){return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');}
+function toNumber(x){ const n=Number(String(x??'').replace(/\s|,/g,'')); return isNaN(n)?0:n; }
+function fmtInt(n){ return Number(n||0).toLocaleString('en-US'); }
+function fmtUSD(n){ return '$' + Number(n||0).toLocaleString('en-US', { maximumFractionDigits: 2 }); }
+function timeAgo(fromMs){ const now = Date.now(); const diff = Math.max(0, now - fromMs); const s = Math.floor(diff/1000); if(s<60)return `${s} sec ago`; const m=Math.floor(s/60); if(m<60)return `${m} min ago`; const h=Math.floor(m/60); if(h<24)return `${h} h ago`; const d=Math.floor(h/24); if(d<30)return `${d} d ago`; const mo=Math.floor(d/30); if(mo<12)return `${mo} mo ago`; const y=Math.floor(mo/12); return `${y} y ago`; }
+
+// --- Load CSV and render leaderboard ---
+async function loadCSV(path){
+  const res = await fetch(path,{cache:'no-store'});
+  if(!res.ok) throw new Error(`HTTP ${res.status} for ${path}`);
+  return { text: await res.text(), headers: res.headers };
+}
+function parseCSV(text){
+  const content = text.replace(/\r/g,'').trim();
+  if(!content) return [];
+  const lines = content.split('\n');
+  const delim = lines[0].includes(',')?',':'\t';
+  return lines.map(line=>line.split(delim));
+}
+async function renderLeaderboard(){
+  const tbody = document.getElementById('leaderboard').querySelector('tbody');
+  try{
+    const { text } = await loadCSV('./result_data.csv');
+    const rows = parseCSV(text);
+    const headers = rows[0].map(h=>h.trim().toLowerCase());
+    const idx = Object.fromEntries(headers.map((h,i)=>[h,i]));
+    const data = rows.slice(1).map(r=>({
+      rank: toNumber(r[idx['rank']]),
+      username: r[idx['username']],
+      score: toNumber(r[idx['score']]),
+      points: toNumber(r[idx['points']]||0),
+      gachaRare: toNumber(r[idx['gacha rare']]||0),
+      gachaEpic: toNumber(r[idx['gacha epic']]||0),
+      gachaLegendary: toNumber(r[idx['gacha legendary']]||0),
+      nft: r[idx['nft']]||'-',
+      pixel: toNumber(r[idx['pixel']]||0),
+      usd: toNumber(r[idx['usd']]||0)
+    }));
+    tbody.innerHTML='';
+    for(const row of data){
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${row.rank}</td><td>${escapeHTML(row.username)}</td><td>${row.score}</td><td>${row.points}</td>
+<td>${row.gachaRare}</td><td>${row.gachaEpic}</td><td>${row.gachaLegendary}</td><td>${row.nft}</td><td>${row.pixel}</td><td>${fmtUSD(row.usd)}</td>`;
+      tbody.appendChild(tr);
     }
-    let best = ',', max=-1;
-    for (const c of candidates){ if (counts[c]>max){ max=counts[c]; best=c; } }
-    return best;
-  }
-  function parseCSV(text){
-    const content = text.replace(/\r/g,'').trim();
-    if (!content) return [];
-    const lines = content.split('\n');
-    const delim = detectDelimiter(lines[0]);
-    const rows = lines.map(line=>{
-      const out=[], n=line.length; let cur='', q=false;
-      for (let i=0;i<n;i++){
-        const ch=line[i], nx=line[i+1];
-        if (ch === '"'){
-          if (q && nx === '"'){ cur+='"'; i++; }
-          else { q=!q; }
-        } else if (ch === delim && !q){ out.push(cur); cur=''; }
-        else { cur += ch; }
-      }
-      out.push(cur);
-      return out;
-    });
-    return rows;
-  }
-  function toNumber(x){ const n=Number(String(x??'').replace(/\s|,/g,'')); return isNaN(n)?0:n; }
-  function fmtInt(n){ return Number(n||0).toLocaleString('en-US'); }
-  function fmtUSD(n){ return '$' + Number(n||0).toLocaleString('en-US', { maximumFractionDigits: 2 }); }
-  function timeAgo(fromMs){
-    const now = Date.now();
-    const diff = Math.max(0, now - fromMs);
-    const s = Math.floor(diff/1000);
-    if (s < 60) return `${s} sec ago`;
-    const m = Math.floor(s/60);
-    if (m < 60) return `${m} min ago`;
-    const h = Math.floor(m/60);
-    if (h < 24) return `${h} h ago`;
-    const d = Math.floor(h/24);
-    if (d < 30) return `${d} d ago`;
-    const mo = Math.floor(d/30);
-    if (mo < 12) return `${mo} mo ago`;
-    const y = Math.floor(mo/12);
-    return `${y} y ago`;
-  }
-  function escapeHTML(s){
-    return String(s)
-      .replaceAll('&','&amp;')
-      .replaceAll('<','&lt;')
-      .replaceAll('>','&gt;')
-      .replaceAll('"','&quot;')
-      .replaceAll("'",'&#39;');
-  }
+    document.getElementById('qualifyingCount').textContent = fmtInt(data.length);
+  }catch(e){console.error(e);}
+}
+renderLeaderboard();
 
-  // --- Loaders ---
-  async function loadCSV(path){
-    const res = await fetch(path, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`HTTP ${res.status} for ${path}`);
-    return { text: await res.text(), headers: res.headers };
+// Search
+const input = document.getElementById('searchInput');
+input.addEventListener('input',function(){
+  const filter = input.value.toUpperCase();
+  const trs = document.getElementById('leaderboard').getElementsByTagName('tr');
+  for(let i = 1;i<trs.length;i++){
+    const td = trs[i].getElementsByTagName('td')[1];
+    trs[i].style.display = td && td.textContent.toUpperCase().includes(filter)?'':'none';
   }
+});
 
-  async function loadPixelMap(){
-    try{
-      const { text } = await loadCSV('./pixel.csv');
-      const rows = parseCSV(text);
-      if (!rows.length) return {};
-      const headers = rows[0].map(h=>String(h).trim().toLowerCase());
-      const idx = Object.fromEntries(headers.map((h,i)=>[h, i]));
-      if (!('rank' in idx)) return {};
-      const map = {};
-      for (let i=1;i<rows.length;i++){
-        const r = rows[i];
-        const rank = toNumber(r[idx['rank']]);
-        const px   = 'pixel' in idx ? toNumber(r[idx['pixel']]) : 0;
-        const usd  = ('usd' in idx) ? toNumber(r[idx['usd']]) : 0;
-        if (rank>0) map[rank] = { pixel: px, usd: usd };
-      }
-      return map;
-    }catch(_){
-      return {};
+// Last Updated
+async function updateLastModified(){
+  let lastModifiedMs = Date.now();
+  try{
+    const head = await fetch('./result_data.csv',{method:'HEAD', cache:'no-store'});
+    if(head.ok){
+      const lm = head.headers.get('last-modified');
+      if(lm){ lastModifiedMs = new Date(lm).getTime(); }
     }
-  }
-
-  async function loadNftMap(){
-    try{
-      const { text } = await loadCSV('./nft_data.csv');
-      const rows = parseCSV(text);
-      if (!rows.length) return {};
-      const headers = rows[0].map(h=>String(h).trim().toLowerCase());
-      const idx = Object.fromEntries(headers.map((h,i)=>[h, i]));
-      if (!('userid' in idx)) return {};
-      const map = {};
-      for (let i=1;i<rows.length;i++){
-        const r = rows[i];
-        const userId = String(r[idx['userid']] ?? '').trim();
-        if (!userId) continue;
-        let val = '-';
-        if ('multiplier' in idx) val = String(r[idx['multiplier']] ?? '').trim();
-        else if ('nft' in idx)  val = String(r[idx['nft']] ?? '').trim();
-        map[userId] = val || '-';
-      }
-      return map;
-    } catch(_) {
-      return {};
-    }
-  }
-
-  // --- Load CSV and render ---
-  (async function(){
-    const lastEl = document.getElementById('lastUpdated');
-    const tbody = document.getElementById('tbody');
-    const qualifyingEl = document.getElementById('qualifyingCount');
-
-    let lastModifiedMs = null;
-
-    try{
-      // Last-Modified
-      const head = await fetch('./result_data.csv', { method: 'HEAD', cache: 'no-store' })
-        .catch(()=>fetch('./empty_data.csv', { method: 'HEAD', cache: 'no-store' }).catch(()=>null));
-      if (head && head.ok){
-        const lm = head.headers.get('last-modified');
-        if (lm){
-          const d = new Date(lm);
-          if (!isNaN(d)) lastModifiedMs = d.getTime();
-        }
-      }
-
-      // Загружаем leaderboard + rewards
-      const [{ text: csvText, headers }, pixelMap, nftMap] = await Promise.all([
-        loadCSV('./result_data.csv').catch(()=>loadCSV('./empty_data.csv')),
-        loadPixelMap(),
-        loadNftMap()
-      ]);
-
-      if (!lastModifiedMs){
-        const lm2 = headers.get('last-modified');
-        if (lm2){
-          const d2 = new Date(lm2);
-          if (!isNaN(d2)) lastModifiedMs = d2.getTime();
-        }
-      }
-
-      // Парсим CSV
-      const rows = parseCSV(csvText);
-      if (!rows.length) throw new Error('CSV is empty');
-
-      const headersRow = rows[0].map(h => String(h).trim());
-      const idx = Object.fromEntries(headersRow.map((h,i)=>[h.toLowerCase(), i]));
-      const has = (name) => Object.prototype.hasOwnProperty.call(idx, name.toLowerCase());
-      const gi = (row, name) => row[idx[name.toLowerCase()]];
-
-      const data = rows.slice(1).map(r=>{
-        if (!r || !r.length) return null;
-
-        const rank     = has('rank') ? toNumber(gi(r,'rank')) : 0;
-        const username = has('username') ? gi(r,'username') : '';
-        const score    = has('score') ? toNumber(gi(r,'score')) : 0;
-
-        // points
-        let points = 0;
-        if (has('points')) points = toNumber(gi(r,'points'));
-        else if (has('point')) points = toNumber(gi(r,'point'));
-
-        // Gacha columns (из result_data.csv: "Gacha rare"/"Gacha epic"/"Gacha legendary")
-        let gachaRare = 0, gachaEpic = 0, gachaLegendary = 0;
-
-        if (has('gacha rare')) gachaRare = toNumber(gi(r,'gacha rare'));
-        else if (has('rare')) gachaRare = toNumber(gi(r,'rare'));
-
-        if (has('gacha epic')) gachaEpic = toNumber(gi(r,'gacha epic'));
-        else if (has('epic')) gachaEpic = toNumber(gi(r,'epic'));
-
-        if (has('gacha legendary')) gachaLegendary = toNumber(gi(r,'gacha legendary'));
-        else if (has('legendary')) gachaLegendary = toNumber(gi(r,'legendary'));
-
-        const userId = has('userid') ? String(gi(r,'userid')).trim() : '';
-
-        // NFT: сначала из nftMap (по userId), если нет — из CSV
-        let nft = '-';
-        if (userId && nftMap[userId]) nft = nftMap[userId];
-        else if (has('nft')) nft = String(gi(r,'nft') ?? '-').trim();
-
-        // prize из pixelMap (если есть), иначе из CSV
-        const pixelCsv = has('pixel') ? toNumber(gi(r,'pixel')) : 0;
-        const usdCsv =
-          has('usd') ? toNumber(gi(r,'usd')) :
-          (has('usd (ref.)') ? toNumber(gi(r,'usd (ref.)')) : 0);
-
-        return {
-          rank, username, score,
-          points, gachaRare, gachaEpic, gachaLegendary,
-          nft, userId,
-          pixelCsv, usdCsv
-        };
-      }).filter(Boolean);
-
-      // Сорт по Rank на всякий случай
-      data.sort((a,b)=> a.rank - b.rank);
-
-      const limited = data.slice(0, 3000);
-
-      const frag = document.createDocumentFragment();
-      for (const row of limited){
-        const prize = pixelMap[row.rank] || { pixel: row.pixelCsv, usd: row.usdCsv };
-        const pixelVal = prize.pixel || 0;
-        const usdVal   = prize.usd   || 0;
-
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${row.rank}</td>
-          <td>${escapeHTML(row.username)}</td>
-          <td>${fmtInt(row.score)}</td>
-          <td>${fmtInt(row.points)}</td>
-          <td>${fmtInt(row.gachaRare)}</td>
-          <td>${fmtInt(row.gachaEpic)}</td>
-          <td>${fmtInt(row.gachaLegendary)}</td>
-          <td>${escapeHTML(row.nft ?? '-')}</td>
-          <td>${fmtInt(pixelVal)}</td>
-          <td>${fmtUSD(usdVal)}</td>
-        `;
-        frag.appendChild(tr);
-      }
-      tbody.innerHTML = '';
-      tbody.appendChild(frag);
-
-      qualifyingEl.textContent = fmtInt(limited.length);
-
-      // Last Updated
-      const ts = lastModifiedMs ?? Date.now();
-      const icon = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="6" x2="12" y2="12"/><line x1="12" y1="12" x2="16" y2="14"/></svg>';
-      const renderTime = ()=> lastEl.innerHTML = `${icon} Last Updated: ${timeAgo(ts)}`;
-      renderTime();
-      setInterval(renderTime, 60_000);
-
-    } catch(e){
-      console.error(e);
-      const icon = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="6" x2="12" y1="12"/><line x1="12" y1="12" x2="16" y2="14"/></svg>';
-      lastEl.innerHTML = `${icon} Last Updated: —`;
-    }
-
-    // Search by username
-    const input = document.getElementById('searchInput');
-    input.addEventListener('input', function() {
-      const filter = input.value.toUpperCase();
-      const trs = document.getElementById('leaderboard').getElementsByTagName('tr');
-      for (let i = 1; i < trs.length; i++) {
-        const td = trs[i].getElementsByTagName('td')[1];
-        if (td) {
-          const txtValue = td.textContent || td.innerText;
-          trs[i].style.display = txtValue.toUpperCase().includes(filter) ? '' : 'none';
-        }
-      }
-    });
-  })();
+  }catch(_){}
+  const lastEl=document.getElementById('lastUpdated');
+  function render(){ lastEl.textContent='Last Updated: '+timeAgo(lastModifiedMs); }
+  render(); setInterval(render,60000);
+}
+updateLastModified();
 </script>
 
 </body>
