@@ -260,37 +260,96 @@ async function loadCSV(path){
   if(!res.ok) throw new Error(`HTTP ${res.status} for ${path}`);
   return { text: await res.text(), headers: res.headers };
 }
+
+/* FIX #1: robust CSV parser (quotes + comma/tsv) */
 function parseCSV(text){
   const content = text.replace(/\r/g,'').trim();
-  if(!content) return [];
+  if (!content) return [];
   const lines = content.split('\n');
-  const delim = lines[0].includes(',')?',':'\t';
-  return lines.map(line=>line.split(delim));
+  const delim = lines[0].includes(',') ? ',' : '\t';
+
+  return lines.map(line=>{
+    const out=[], n=line.length; let cur='', q=false;
+    for (let i=0;i<n;i++){
+      const ch=line[i], nx=line[i+1];
+      if (ch === '"'){
+        if (q && nx === '"'){ cur+='"'; i++; }
+        else { q=!q; }
+      } else if (ch === delim && !q){
+        out.push(cur); cur='';
+      } else {
+        cur += ch;
+      }
+    }
+    out.push(cur);
+    return out;
+  });
 }
+
+/* FIX #2: load pixel.csv and map rewards by rank */
+async function loadPixelMap(){
+  try{
+    const { text } = await loadCSV('./pixel.csv');
+    const rows = parseCSV(text);
+    if (!rows.length) return {};
+    const headers = rows[0].map(h=>String(h).trim().toLowerCase());
+    const idx = Object.fromEntries(headers.map((h,i)=>[h,i]));
+    if (!('rank' in idx)) return {};
+    const map = {};
+    for (let i=1;i<rows.length;i++){
+      const r = rows[i];
+      const rank = toNumber(r[idx['rank']]);
+      const pixel = ('pixel' in idx) ? toNumber(r[idx['pixel']]) : 0;
+      const usd = ('usd' in idx) ? toNumber(r[idx['usd']]) : 0;
+      if (rank > 0) map[rank] = { pixel, usd };
+    }
+    return map;
+  }catch(_){
+    return {};
+  }
+}
+
 async function renderLeaderboard(){
   const tbody = document.getElementById('leaderboard').querySelector('tbody');
   try{
-    const { text } = await loadCSV('./result_data.csv');
+    /* FIX #2: load result_data.csv + pixel.csv together */
+    const [{ text }, pixelMap] = await Promise.all([
+      loadCSV('./result_data.csv'),
+      loadPixelMap()
+    ]);
+
     const rows = parseCSV(text);
-    const headers = rows[0].map(h=>h.trim().toLowerCase());
+    const headers = rows[0].map(h=>String(h).trim().toLowerCase());
     const idx = Object.fromEntries(headers.map((h,i)=>[h,i]));
-    const data = rows.slice(1).map(r=>({
-      rank: toNumber(r[idx['rank']]),
-      username: r[idx['username']],
-      score: toNumber(r[idx['score']]),
-      points: toNumber(r[idx['points']]||0),
-      gachaRare: toNumber(r[idx['gacha rare']]||0),
-      gachaEpic: toNumber(r[idx['gacha epic']]||0),
-      gachaLegendary: toNumber(r[idx['gacha legendary']]||0),
-      nft: r[idx['nft']]||'-',
-      pixel: toNumber(r[idx['pixel']]||0),
-      usd: toNumber(r[idx['usd']]||0)
-    }));
+
+    const data = rows.slice(1).map(r=>{
+      const rank = toNumber(r[idx['rank']]);
+      const prize = pixelMap[rank] || { pixel: 0, usd: 0 };
+
+      return {
+        rank,
+        username: r[idx['username']],
+        score: toNumber(r[idx['score']]),
+        points: toNumber(r[idx['points']]||0),
+
+        // from python CSV: "Gacha rare/epic/legendary"
+        gachaRare: toNumber(r[idx['gacha rare']]||0),
+        gachaEpic: toNumber(r[idx['gacha epic']]||0),
+        gachaLegendary: toNumber(r[idx['gacha legendary']]||0),
+
+        nft: (r[idx['nft']] ?? '-'),
+
+        // prizes from pixel.csv
+        pixel: prize.pixel,
+        usd: prize.usd
+      };
+    });
+
     tbody.innerHTML='';
     for(const row of data){
       const tr=document.createElement('tr');
-      tr.innerHTML=`<td>${row.rank}</td><td>${escapeHTML(row.username)}</td><td>${row.score}</td><td>${row.points}</td>
-<td>${row.gachaRare}</td><td>${row.gachaEpic}</td><td>${row.gachaLegendary}</td><td>${row.nft}</td><td>${row.pixel}</td><td>${fmtUSD(row.usd)}</td>`;
+      tr.innerHTML=`<td>${row.rank}</td><td>${escapeHTML(row.username)}</td><td>${fmtInt(row.score)}</td><td>${fmtInt(row.points)}</td>
+<td>${fmtInt(row.gachaRare)}</td><td>${fmtInt(row.gachaEpic)}</td><td>${fmtInt(row.gachaLegendary)}</td><td>${escapeHTML(row.nft)}</td><td>${fmtInt(row.pixel)}</td><td>${fmtUSD(row.usd)}</td>`;
       tbody.appendChild(tr);
     }
     document.getElementById('qualifyingCount').textContent = fmtInt(data.length);
