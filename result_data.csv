@@ -1,1 +1,4 @@
-Rank,Username,Score,Points,Gacha rare,Gacha epic,Gacha legendary,NFT,PIXEL,USD (ref.),userId
+Rank,Username,Score,Points,Rare,Epic,Legendary,NFT,PIXEL,USD (ref.),userId
+1,test,100,100,30,30,30,1.0,100,100
+2,test,100,100,30,30,30,1.0,100,100
+3,test,100,100,30,30,30,1.0,100,100
