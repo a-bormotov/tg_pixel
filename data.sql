@@ -208,9 +208,9 @@ gacha AS (
     COUNT(*) FILTER (WHERE rarity_num = 2) AS legendary,
     SUM(
       CASE rarity_num
-        WHEN 0 THEN 1
-        WHEN 1 THEN 5
-        WHEN 2 THEN 50
+        WHEN 0 THEN 5
+        WHEN 1 THEN 20
+        WHEN 2 THEN 80
         ELSE 0
       END
     )::bigint AS gacha_points
