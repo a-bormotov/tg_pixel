@@ -1,0 +1,134 @@
+name: Update vipHistory from shop purchases
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "10 3 * * *"   # daily at 03:10 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  run-sql:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps (pinned)
+        run: |
+          python -m pip install --upgrade pip
+          pip install "psycopg2-binary==2.9.9" "sshtunnel==0.4.0" "paramiko==2.12.0"
+
+      - name: Run SQL (ads_update.sql -> DB2)
+        env:
+          # SSH
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY:  ${{ secrets.SSH_KEY }}
+          SSH_KEY_PASSWORD: ${{ secrets.SSH_KEY_PASSWORD }}
+
+          # DB2 (events + vipHistory)
+          DB2_HOST: ${{ secrets.DB2_HOST }}
+          DB2_PORT: ${{ secrets.DB2_PORT }}
+          DB2_NAME: ${{ secrets.DB2_NAME }}
+          DB2_USER: ${{ secrets.DB2_USER }}
+          DB2_PASS: ${{ secrets.DB2_PASS }}
+
+          SQL_FILE: "ads_update.sql"
+        run: |
+          python - <<'PY'
+          import os, sys, tempfile
+          import psycopg2
+          from sshtunnel import SSHTunnelForwarder
+
+          def need(name: str) -> str:
+            v = os.getenv(name, "")
+            if not v.strip():
+              print(f"[config error] Missing env: {name}", file=sys.stderr)
+              sys.exit(2)
+            return v
+
+          def as_int(name: str, default: int) -> int:
+            v = os.getenv(name, "").strip()
+            if not v: return default
+            try: return int(v)
+            except ValueError:
+              print(f"[config error] Env {name} must be integer, got: {v!r}", file=sys.stderr)
+              sys.exit(2)
+
+          def clean_password(v: str) -> str:
+            v = v.replace("\r","").replace("\n","")
+            if len(v) >= 2 and v[0] == v[-1] and v[0] in ("'", '"'):
+              v = v[1:-1]
+            return v
+
+          def write_key(key_text: str) -> str:
+            fd, path = tempfile.mkstemp(prefix="id_", suffix=".key")
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+              f.write(key_text)
+            os.chmod(path, 0o600)
+            return path
+
+          sql_file = os.environ.get("SQL_FILE", "ads_update.sql")
+          if not os.path.exists(sql_file):
+            print(f"[config error] Missing SQL file: {sql_file}", file=sys.stderr)
+            sys.exit(2)
+
+          with open(sql_file, "r", encoding="utf-8") as f:
+            sql_text = f.read().strip()
+          if not sql_text:
+            print("[config error] SQL file is empty", file=sys.stderr)
+            sys.exit(2)
+
+          ssh_host = need("SSH_HOST")
+          ssh_port = as_int("SSH_PORT", 22)
+          ssh_user = need("SSH_USER")
+          ssh_key  = need("SSH_KEY")
+          ssh_key_password = os.getenv("SSH_KEY_PASSWORD")
+          key_path = write_key(ssh_key)
+
+          db_host = need("DB2_HOST")
+          db_port = as_int("DB2_PORT", 5432)
+          db_name = need("DB2_NAME")
+          db_user = need("DB2_USER")
+          db_pass = clean_password(need("DB2_PASS"))
+
+          print("[run] opening ssh tunnel...")
+          tunnel = SSHTunnelForwarder(
+            (ssh_host, ssh_port),
+            ssh_username=ssh_user,
+            ssh_pkey=key_path,
+            ssh_private_key_password=ssh_key_password,
+            remote_bind_address=(db_host, db_port),
+          )
+          tunnel.start()
+          try:
+            conn = psycopg2.connect(
+              host="127.0.0.1",
+              port=tunnel.local_bind_port,
+              dbname=db_name,
+              user=db_user,
+              password=db_pass,
+              application_name="sleepagotchi-ads-update",
+            )
+            try:
+              with conn.cursor() as cur:
+                cur.execute(sql_text)
+                affected = cur.rowcount
+              conn.commit()
+              print(f"[ok] SQL executed. affected rows: {affected}")
+            finally:
+              conn.close()
+          finally:
+            tunnel.stop()
+            print("[done] tunnel closed")
+          PY
