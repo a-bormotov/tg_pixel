@@ -137,7 +137,7 @@ def main():
         with open(BLACKLIST_FILE, "r", encoding="utf-8") as f:
             rdr = csv.DictReader(f)
             for row in rdr:
-                v = (row.get("userid") or "").strip()
+                v = (row.get("userid") or row.get("userId") or row.get("User ID") or "").strip()
                 if v:
                     blacklist.add(v)
     filtered_ids = [u for u in user_ids if u not in blacklist]
