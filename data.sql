@@ -13,7 +13,7 @@
 WITH
 win AS (
   SELECT
-    TIMESTAMPTZ '2026-02-24 16:00:00+00' AS win_start,
+    TIMESTAMPTZ '2026-02-25 16:00:00+00' AS win_start,
     TIMESTAMPTZ '2026-02-27 16:00:00+00' AS win_end
 ),
 
