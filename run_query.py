@@ -165,21 +165,11 @@ def main():
         except Exception as e:
             print(f"[warn] failed to read {NFT_FILE}: {e}")
     else:
-        print("[info] nft_data.csv not found; no eligible players by NFT rule")
+        print("[info] nft_data.csv not found; all players are eligible (multiplier defaults to 1.0)")
 
-    before = len(filtered_ids)
-    filtered_ids = [u for u in filtered_ids if u in nft_mult]
-    print(f"[2.6] nft eligibility filtered: {before} -> {len(filtered_ids)}")
+    # Note: We do NOT restrict eligibility by NFT.
+    # If nft_data.csv is present, its multiplier is applied; otherwise multiplier defaults to 1.0.
 
-    if not filtered_ids:
-        with open(RESULT_CSV, "w", newline="", encoding="utf-8") as f:
-            csv.writer(f).writerow(
-                ["Rank","Username","Score","PurpleStones",
-                 "Rare","Epic","Legendary",
-                 "NFT","PIXEL","USD (ref.)","userId"]
-            )
-        print("[stop] no eligible players left; wrote empty result_data.csv")
-        return
 
     # ===== 3) DB1 -> usernames =====
     if "{IDS}" in sql_user_tpl:
@@ -222,7 +212,7 @@ def main():
     # resource column: purpleStones
     idx_pts   = idx("purplestones")
     if idx_pts is None:
-        print("[error] Column 'purpleStones' not found in raw query result.", file=sys.stderr)
+        print("[error] Column 'purpleStones' not found in DB2 result.", file=sys.stderr)
         sys.exit(2)
     idx_r     = idx("rare")
     idx_e     = idx("epic")
@@ -233,20 +223,18 @@ def main():
         uid = str(r[uid_idx])
         if uid in blacklist:
             continue
-        if uid not in nft_mult:
-            continue  # eligibility
 
         username = id_to_name.get(uid, uid)
 
         base_score = float(r[idx_score]) if idx_score is not None and r[idx_score] is not None else 0.0
-        purple_stones = int(r[idx_pts]) if r[idx_pts] is not None else 0
+        purple_stones = int(r[idx_pts]) if idx_pts is not None and r[idx_pts] is not None else 0
 
         gacha_rare = int(r[idx_r]) if idx_r is not None and r[idx_r] is not None else 0
         gacha_epic = int(r[idx_e]) if idx_e is not None and r[idx_e] is not None else 0
         gacha_leg  = int(r[idx_l]) if idx_l is not None and r[idx_l] is not None else 0
         gacha_total = gacha_rare + gacha_epic + gacha_leg
 
-        mult = float(nft_mult[uid])
+        mult = float(nft_mult.get(uid, 1.0))
         final_score = int(math.ceil(base_score * mult))
         order_key = ord_map.get(uid, 0)
 
@@ -274,7 +262,7 @@ def main():
                 f"{mult:.1f}", "-", "-", uid
             ])
 
-    print(f"[4] wrote {RESULT_CSV}: {len(records)} rows (top {TOP_N}, NFT multipliers applied)")
+    print(f"[4] wrote {RESULT_CSV}: {len(records)} rows (top {TOP_N}, NFT multiplier defaults to 1.0)")
 
 if __name__ == "__main__":
     main()
