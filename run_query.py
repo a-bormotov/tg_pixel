@@ -234,6 +234,7 @@ def main():
         gacha_leg  = int(r[idx_l]) if idx_l is not None and r[idx_l] is not None else 0
         gacha_total = gacha_rare + gacha_epic + gacha_leg
 
+        has_nft = uid in nft_mult
         mult = float(nft_mult.get(uid, 1.0))
         final_score = int(math.ceil(base_score * mult))
         order_key = ord_map.get(uid, 0)
@@ -259,10 +260,10 @@ def main():
             w.writerow([
                 i, username, score, purple_stones,
                 gacha_rare, gacha_epic, gacha_leg,
-                f"{mult:.1f}", "-", "-", uid
+                (f"{mult:.1f}" if uid in nft_mult else "-"), "-", "-", uid
             ])
 
-    print(f"[4] wrote {RESULT_CSV}: {len(records)} rows (top {TOP_N}, NFT multiplier defaults to 1.0)")
+    print(f"[4] wrote {RESULT_CSV}: {len(records)} rows (top {TOP_N}, NFT column shows '-' when no NFT (multiplier treated as 1.0))")
 
 if __name__ == "__main__":
     main()
