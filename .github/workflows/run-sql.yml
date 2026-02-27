@@ -2,8 +2,6 @@ name: Run NFT purpleStones event
 
 on:
   workflow_dispatch: {}
-  schedule:
-    - cron: "55 * * * *"
 
 permissions:
   contents: write

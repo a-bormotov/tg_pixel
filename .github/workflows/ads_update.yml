@@ -2,8 +2,6 @@ name: Update vipHistory from shop purchases
 
 on:
   workflow_dispatch: {}
-  schedule:
-    - cron: "10 3 * * *"   # daily at 03:10 UTC
 
 permissions:
   contents: read
