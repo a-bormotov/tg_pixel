@@ -13,8 +13,8 @@
 WITH
 win AS (
   SELECT
-    TIMESTAMPTZ '2026-02-25 16:00:00+00' AS win_start,
-    TIMESTAMPTZ '2026-02-27 16:00:00+00' AS win_end
+    TIMESTAMPTZ '2026-03-16 17:00:00+00' AS win_start,
+    TIMESTAMPTZ '2026-03-20 17:00:00+00' AS win_end
 ),
 
 /* 1) Events in window (exclude userId starting with 'line') */
