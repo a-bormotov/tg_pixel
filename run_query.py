@@ -64,6 +64,11 @@ def run_sql_via_ssh(db_host, db_port, db_name, db_user, db_pass,
         )
         try:
             with conn.cursor() as cur:
+                print("=== SQL DEBUG HEAD ===")
+                lines = sql_text.splitlines()
+                for i, line in enumerate(lines[:30], 1):
+                    print(f"{i:02d}: {line}")
+                print("=== SQL DEBUG END ===")
                 cur.execute(sql_text)
                 rows = cur.fetchall()
                 cols = [d[0] for d in cur.description]
