@@ -11,6 +11,12 @@ BLACKLIST_FILE = "black_list.csv"   # столбец: userid
 NFT_FILE       = "nft_data.csv"     # столбцы: userId, multiplier
 TOP_N          = int(os.environ.get("TOP_N", "3000"))
 
+RESULT_HEADERS = [
+    "Rank","Username","Score","PurpleStones",
+    "Rare","Epic","Legendary",
+    "NFT","PIXEL","USD (ref.)","userId"
+]
+
 # ---------- helpers ----------
 def need(name: str) -> str:
     v = os.getenv(name, "")
@@ -64,11 +70,6 @@ def run_sql_via_ssh(db_host, db_port, db_name, db_user, db_pass,
         )
         try:
             with conn.cursor() as cur:
-                print("=== SQL DEBUG HEAD ===")
-                lines = sql_text.splitlines()
-                for i, line in enumerate(lines[:30], 1):
-                    print(f"{i:02d}: {line}")
-                print("=== SQL DEBUG END ===")
                 cur.execute(sql_text)
                 rows = cur.fetchall()
                 cols = [d[0] for d in cur.description]
@@ -80,6 +81,12 @@ def run_sql_via_ssh(db_host, db_port, db_name, db_user, db_pass,
 
 def esc_sql_str(s: str) -> str:
     return s.replace("'", "''")
+
+def write_empty_result():
+    with open(RESULT_CSV, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(RESULT_HEADERS)
+    print(f"[4] wrote {RESULT_CSV}: 0 rows (event window returned no participants)")
 
 # ---------- main ----------
 def main():
@@ -110,6 +117,7 @@ def main():
         if not os.path.exists(f):
             print(f"[config error] Missing SQL file: {f}", file=sys.stderr)
             sys.exit(2)
+
     with open(SQL_FILE, "r", encoding="utf-8") as f:
         sql_data = f.read()
     with open(USER_SQL_FILE, "r", encoding="utf-8") as f:
@@ -128,12 +136,19 @@ def main():
         w.writerows(rows2)
     print(f"[1] wrote {RAW_CSV}: {len(rows2)} rows")
 
+    # If event hasn't started (or no participants) — exit gracefully.
+    if not rows2:
+        print("[info] DB2 returned 0 rows; skipping DB1 usernames query.")
+        write_empty_result()
+        return
+
     # userId index
     try:
         uid_idx = [c.lower() for c in cols2].index("userid")
     except ValueError:
         print("[error] Column 'userId' not found.", file=sys.stderr)
         sys.exit(2)
+
     user_ids = [str(r[uid_idx]) for r in rows2]
 
     # ===== 2) Blacklist =====
@@ -145,10 +160,17 @@ def main():
                 v = (row.get("userid") or row.get("userId") or row.get("User ID") or "").strip()
                 if v:
                     blacklist.add(v)
+
     filtered_ids = [u for u in user_ids if u not in blacklist]
     print(f"[2] blacklist filtered: {len(user_ids)} -> {len(filtered_ids)}")
 
-    # ===== 2.5) NFT multipliers (and eligibility) =====
+    # If everything filtered out — exit gracefully.
+    if not filtered_ids:
+        print("[info] No participants after blacklist; skipping DB1 usernames query.")
+        write_empty_result()
+        return
+
+    # ===== 2.5) NFT multipliers (no eligibility restriction) =====
     nft_mult = {}
     if os.path.exists(NFT_FILE):
         try:
@@ -170,11 +192,7 @@ def main():
         except Exception as e:
             print(f"[warn] failed to read {NFT_FILE}: {e}")
     else:
-        print("[info] nft_data.csv not found; all players are eligible (multiplier defaults to 1.0)")
-
-    # Note: We do NOT restrict eligibility by NFT.
-    # If nft_data.csv is present, its multiplier is applied; otherwise multiplier defaults to 1.0.
-
+        print("[info] nft_data.csv not found; NFT column will be '-' for everyone (multiplier treated as 1.0)")
 
     # ===== 3) DB1 -> usernames =====
     if "{IDS}" in sql_user_tpl:
@@ -196,6 +214,7 @@ def main():
         ssh_host, ssh_port, ssh_user, key_path, ssh_key_password,
         sql_user_final
     )
+
     c_lower = [c.lower() for c in cols1]
     c_uid = c_lower.index("userid")
     c_unm = c_lower.index("username")
@@ -214,14 +233,14 @@ def main():
             return None
 
     idx_score = idx("score")
-    # resource column: purpleStones
     idx_pts   = idx("purplestones")
     if idx_pts is None:
         print("[error] Column 'purpleStones' not found in DB2 result.", file=sys.stderr)
         sys.exit(2)
-    idx_r     = idx("rare")
-    idx_e     = idx("epic")
-    idx_l     = idx("legendary")
+
+    idx_r = idx("rare")
+    idx_e = idx("epic")
+    idx_l = idx("legendary")
 
     records = []
     for r in rows2:
@@ -232,15 +251,14 @@ def main():
         username = id_to_name.get(uid, uid)
 
         base_score = float(r[idx_score]) if idx_score is not None and r[idx_score] is not None else 0.0
-        purple_stones = int(r[idx_pts]) if idx_pts is not None and r[idx_pts] is not None else 0
+        purple_stones = int(r[idx_pts]) if r[idx_pts] is not None else 0
 
         gacha_rare = int(r[idx_r]) if idx_r is not None and r[idx_r] is not None else 0
         gacha_epic = int(r[idx_e]) if idx_e is not None and r[idx_e] is not None else 0
         gacha_leg  = int(r[idx_l]) if idx_l is not None and r[idx_l] is not None else 0
         gacha_total = gacha_rare + gacha_epic + gacha_leg
 
-        has_nft = uid in nft_mult
-        mult = float(nft_mult.get(uid, 1.0))
+        mult = float(nft_mult.get(uid, 1.0))  # used for calc
         final_score = int(math.ceil(base_score * mult))
         order_key = ord_map.get(uid, 0)
 
@@ -248,17 +266,13 @@ def main():
                         gacha_rare, gacha_epic, gacha_leg,
                         uid, order_key, mult))
 
-    # sort by adjusted score, then purpleStones, then total gacha, then ord
+    # sort by score desc, then purpleStones, then total gacha, then ord
     records.sort(key=lambda x: (x[1], x[2], x[3], x[8]), reverse=True)
     records = records[:TOP_N]
 
     with open(RESULT_CSV, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow([
-            "Rank","Username","Score","PurpleStones",
-            "Rare","Epic","Legendary",
-            "NFT","PIXEL","USD (ref.)","userId"
-        ])
+        w.writerow(RESULT_HEADERS)
         for i, (username, score, purple_stones, _gacha_total,
                 gacha_rare, gacha_epic, gacha_leg,
                 uid, _, mult) in enumerate(records, start=1):
@@ -268,7 +282,7 @@ def main():
                 (f"{mult:.1f}" if uid in nft_mult else "-"), "-", "-", uid
             ])
 
-    print(f"[4] wrote {RESULT_CSV}: {len(records)} rows (top {TOP_N}, NFT column shows '-' when no NFT (multiplier treated as 1.0))")
+    print(f"[4] wrote {RESULT_CSV}: {len(records)} rows (top {TOP_N}, NFT column shows '-' when no NFT)")
 
 if __name__ == "__main__":
     main()
