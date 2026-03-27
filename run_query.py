@@ -12,9 +12,8 @@ NFT_FILE       = "nft_data.csv"     # столбцы: userId, multiplier
 TOP_N          = int(os.environ.get("TOP_N", "3000"))
 
 RESULT_HEADERS = [
-    "Rank","Username","Score","PurpleStones",
-    "Rare","Epic","Legendary",
-    "NFT","PIXEL","USD (ref.)","userId"
+    "Rank","Username","Score",
+    "NFT","PIXEL","USD (ref.)"
 ]
 
 # ---------- helpers ----------
