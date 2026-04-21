@@ -2,174 +2,150 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Paint By Pixels Event</title>
-
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-
+<title>Sleepagotchi x Pixels Event</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
-* { box-sizing: border-box; }
-
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", Inter, sans-serif;
-  background: #2C2C2E;
-  color: #fff;
+  font-family: 'Nunito Sans', sans-serif;
+  background: url("https://i.ibb.co/YF2TRrHB/space-bg-1.png") repeat;
+  color: #ffffff;
   text-align: center;
+  font-size: 14px;
+  position: relative;
 }
-
-/* GLASS */
-.glass {
-  background: rgba(255,255,255,0.06);
-  backdrop-filter: blur(20px);
-  border-radius: 16px;
-  border: 1px solid rgba(255,255,255,0.08);
+body::before {
+  content: "";
+  position: fixed;
+  top:0; left:0;
+  width:100%; height:100%;
+  background: rgba(0,0,0,0.65);
+  z-index: -1;
 }
-
-/* CONTAINER */
+body * { color: #ffffff !important; }
 .container {
   max-width: 1100px;
   margin: 0 auto;
   padding: 20px;
-}
-
-/* GRADIENT */
-.gradient-text {
-  background: linear-gradient(90deg, #93C5FD 0%, #C4B5FD 48%, #FFB6D9 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-/* BUTTON FIX */
-a { color: #fff; }
-
-.top-info a,
-.opensea a,
-.verify-row a {
-  display: inline-block;
-  margin-top: 10px;
-  padding: 12px 16px;
+  background: rgba(0,0,0,0.55);
   border-radius: 12px;
-  background: linear-gradient(135deg,#7B61FF,#5AC8FA);
-  text-decoration: none;
-  font-weight: 500;
-  color: #fff !important;
 }
-
-/* TITLES */
-.event-title {
-  font-size: 32px;
-  font-weight: 600;
-  margin-top: 30px; /* ← добавлено */
+.event-title, .section-title, .leaderboard-title, .prize-pool {
+  font-family: 'Press Start 2P', monospace;
+  letter-spacing: 1px;
 }
-
-.event-subtitle {
-  opacity: 0.7;
+.top-info {
+  background: rgba(0,0,0,0.7);
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
 }
+.event-title { font-size: 26px; margin: 10px 0; }
+.event-subtitle { font-size: 14px; margin-bottom: 10px; }
+.prize-pool { font-size: 16px; margin-top: 20px; }
+.top-players { margin-top: 6px; font-size: 14px; }
+.disclaimer { font-size: 12px; opacity: 0.8; margin-top: 10px; }
 
-.prize-pool {
-  font-size: 20px;
-  margin-top: 20px;
-}
-
-.top-players { opacity: 0.7; }
-.disclaimer { font-size: 12px; opacity: 0.5; margin-top: 10px; }
-
-/* GRID */
+/* GRID: панели одинаковой высоты */
 .info-grid {
   display: flex;
   gap: 20px;
   margin-top: 30px;
+  align-items: stretch;
 }
-@media (max-width:900px){ .info-grid{flex-direction:column;} }
-
+@media (max-width: 900px) {
+  .info-grid { flex-direction: column; }
+}
 .panel {
+  background: rgba(0,0,0,0.7);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 10px;
   padding: 20px;
   text-align: left;
   flex: 1;
 }
 
-/* SECTION TITLES */
-.section-title {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 10px;
-}
-
-/* VERIFY */
+/* VERIFY BUTTONS */
 .verify-row {
   display: flex;
   gap: 12px;
   margin: 25px 0;
 }
-.verify-row a { flex: 1; }
+.verify-row a {
+  flex: 1;
+  padding: 12px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: bold;
+  text-align: center;
+  transition: 0.2s;
+}
+.verify-row a:hover { background: rgba(255,255,255,0.25); }
+
+/* OPENSEA */
+.opensea { margin-top: 16px; text-align: center; }
+.opensea a {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 12px 20px;
+  background: #5E27B6;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: bold;
+}
+.opensea a:hover { background: #6f39d1; }
 
 /* LEADERBOARD */
 .leaderboard-wrapper {
   width: 90%;
   max-width: 1200px;
   margin: 30px auto;
-  padding: 15px;
-}
-
-.leaderboard-title {
-  font-size: 20px;
-  margin-bottom: 10px;
-}
-
-/* SEARCH */
-.search-box {
-  width: 100%;
-  max-width: 400px;
-  margin: 0 auto 15px;
-}
-
-.search-box input {
-  width: 100%;
-  padding: 12px;
+  background: rgba(0,0,0,0.6);
   border-radius: 12px;
-  border: none;
-  background: rgba(255,255,255,0.08);
-  color: #fff;
-  outline: none;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
 }
 
-/* TABLE */
+.leaderboard-title { padding: 12px; font-size: 18px; }
+
 .table-container {
+  flex: 1 1 auto;
   max-height: 400px;
   overflow: auto;
-  border-radius: 12px;
 }
 
 table { border-collapse:collapse; width:100%; min-width:1200px; }
-
 thead th {
-  position:sticky;
-  top:0;
-  background:#2C2C2E;
-}
-
-tbody td {
+  position:sticky; top:0;
+  background: rgba(0,0,0,0.85);
   padding:8px;
-  border-bottom:1px solid rgba(255,255,255,0.08);
+}
+tbody td { padding:8px; border-bottom:1px solid rgba(255,255,255,0.15); }
+
+/* SEARCH */
+.search-box { margin:20px auto; width:320px; position: relative; }
+.search-box input {
+  width:100%;
+  padding:10px 12px;
+  border-radius:6px;
+  border:1px solid #fff;
+  background: rgba(0,0,0,0.7);
+  color:#fff;
+}
+.last-updated {
+  font-size:12px;
+  margin: 10px 0 0 0;
+  opacity:0.8;
+  flex-shrink: 0;
 }
 
-/* STATS */
-.stats {
-  display:flex;
-  gap:20px;
-  margin-top:20px;
-  flex-wrap:wrap;
-}
-.stat-box {
-  flex:1;
-  padding:16px;
-  border-radius:16px;
-  background: rgba(255,255,255,0.06);
-}
-.stat-box div:first-child {
-  font-size:24px;
-  font-weight:600;
-}
+/* BOTTOM STATS - изменено на #5E27B6 */
+.stats { display:flex; justify-content:center; gap:20px; margin-top:20px; flex-wrap:wrap; }
+.stat-box { flex:1; padding:10px; min-width:120px; border-radius:8px; background: #5E27B6; }
+.stat-box div:first-child { font-size:28px; font-weight:bold; margin-bottom:6px; color:#fff; }
+.stat-box div:last-child { color:#fff; }
 </style>
 </head>
 
@@ -177,38 +153,39 @@ tbody td {
 
 <div class="container">
 
-<div class="top-info glass">
+<div class="top-info">
   <p>This event is open for everyone to join!</p>
+  <a href="https://opensea.io/collection/dino-gotchis" target="_blank">Buy an NFT!</a>
 </div>
 
-<div class="event-title">
-  Paint By Pixels:
-  <span class="gradient-text">Special Art Event</span>
-</div>
+<div class="event-title">DEEP PURPLE: SPEED RUN REWIND</div>
+<div class="event-subtitle">Sleepagotchi x PIXELS Collaboration</div>
 
-<div class="event-subtitle">Paint By Pixels x PIXELS Collaboration</div>
-
-<div class="prize-pool">PRIZE POOL: 300,000 $PIXEL</div>
+<div class="prize-pool">PRIZE POOL: 200,000 $PIXEL</div>
 <div class="top-players">TOP 100 PLAYERS</div>
 
-<div class="disclaimer">Prizes are paid in $PIXEL</div>
+<div class="disclaimer">Prizes are paid in $PIXEL to Ronin addresses. USD value may vary.</div>
 
 <div class="info-grid">
 
-  <div class="panel glass">
-    <div class="section-title gradient-text">SCORING SYSTEM</div>
-    <p>Color pixels in Paint By Pixels game</p>
-    <p>1 pixel = 1 score point</p>
-    <p>Only pixels from finished paintings count</p>
-    <p>Enter the wallet with NFTs in the bio field on your profile</p>
-    <p>You can multiply your score by holding NFT</p>
+  <!-- SCORING -->
+  <div class="panel">
+    <div class="section-title">SCORING SYSTEM</div>
+    <p>Collect PurpleStones to gain score.</p>
+    <p>Cards from Gacha boost your final result:</p>
+    <p>Rare = 1%</p>
+    <p>Epic = 3%</p>
+    <p>Legendary = 10% score</p>
   </div>
 
-  <div class="panel glass">
-    <div class="section-title gradient-text">NFT MULTIPLIER</div>
+  <!-- NFT RULES -->
+  <div class="panel">
+    <div class="section-title">RULES FOR NFT MULTIPLIER</div>
+    <p>Boost your rewards by holding</p>
     <p>1 NFT = x1.1 score multiplier</p>
     <p>3 NFT = x1.2 score multiplier</p>
     <p>5 NFT = x1.3 score multiplier</p>
+    <p>Verify your NFTs by clicking buttons below</p>
 
     <div class="opensea">
       <div>Buy NFTs on OpenSea</div>
@@ -218,12 +195,16 @@ tbody td {
 
 </div>
 
-
-
+<div class="verify-row">
+  <a href="https://t.me/+qg4WYGw1dpRhODFk" target="_blank">Verify 1 NFT</a>
+  <a href="https://t.me/+0NScpbwUqMY0MjE0" target="_blank">Verify 3 NFTs</a>
+  <a href="https://t.me/+Yw18TTSr1_84YWRk" target="_blank">Verify 5 NFTs</a>
 </div>
 
+</div> <!-- end container -->
+
 <!-- LEADERBOARD -->
-<div class="leaderboard-wrapper glass">
+<div class="leaderboard-wrapper">
   <div class="leaderboard-title">LEADERBOARD</div>
 
   <div class="search-box">
@@ -234,16 +215,13 @@ tbody td {
     <table id="leaderboard">
       <thead>
         <tr>
-          <th>Rank</th>
-          <th>Username</th>
-          <th>Score</th>
-          <th>NFT</th>
-          <th>$PIXEL</th>
-          <th>USD</th>
+          <th>Rank</th><th>Username</th><th>Score</th><th>PurpleStones</th>
+          <th>Rare</th><th>Epic</th><th>Legendary</th><th>NFT</th>
+          <th>$PIXEL</th><th>USD</th>
         </tr>
       </thead>
       <tbody>
-        <tr><td colspan="6" style="text-align:center;">Loading…</td></tr>
+        <tr><td colspan="10" style="text-align:center;">Loading…</td></tr>
       </tbody>
     </table>
   </div>
@@ -251,7 +229,7 @@ tbody td {
   <div class="last-updated" id="lastUpdated">Last Updated: —</div>
 </div>
 
-<!-- STATS -->
+<!-- BOTTOM STATS -->
 <div class="container">
   <div class="stats">
     <div class="stat-box">
@@ -259,7 +237,7 @@ tbody td {
       <div>Qualifying Players</div>
     </div>
     <div class="stat-box">
-      <div>300,000</div>
+      <div>200,000</div>
       <div>$PIXEL Reward Pool</div>
     </div>
     <div class="stat-box">
@@ -371,8 +349,8 @@ async function renderLeaderboard(){
     tbody.innerHTML='';
     for(const row of data){
       const tr=document.createElement('tr');
-      tr.innerHTML=`<td>${row.rank}</td><td>${escapeHTML(row.username)}</td><td>${fmtInt(row.score)}</td>
-<td>${escapeHTML(row.nft)}</td><td>${fmtInt(row.pixel)}</td><td>${fmtUSD(row.usd)}</td>`;
+      tr.innerHTML=`<td>${row.rank}</td><td>${escapeHTML(row.username)}</td><td>${fmtInt(row.score)}</td><td>${fmtInt(row.purpleStones)}</td>
+<td>${fmtInt(row.rare)}</td><td>${fmtInt(row.epic)}</td><td>${fmtInt(row.legendary)}</td><td>${escapeHTML(row.nft)}</td><td>${fmtInt(row.pixel)}</td><td>${fmtUSD(row.usd)}</td>`;
       tbody.appendChild(tr);
     }
     document.getElementById('qualifyingCount').textContent = fmtInt(data.length);
