@@ -1,4 +1,4 @@
-name: Run NFT purpleStones event
+name: Run NFT greenStones event
 
 on:
   workflow_dispatch: {}
@@ -66,6 +66,6 @@ jobs:
             echo "No changes — skip commit/push."
             exit 0
           fi
-          git commit -m "Update NFT purpleStones event CSVs [skip ci]"
+          git commit -m "Update NFT greenStones event CSVs [skip ci]"
           git pull --rebase --autostash origin "${{ github.ref_name }}"
           git push origin HEAD:"${{ github.ref_name }}"
