@@ -12,8 +12,9 @@ NFT_FILE       = "nft_data.csv"     # столбцы: userId, multiplier
 TOP_N          = int(os.environ.get("TOP_N", "3000"))
 
 RESULT_HEADERS = [
-    "Rank","Username","Score",
-    "NFT","PIXEL","USD (ref.)"
+    "Rank","Username","Score","GreenStones",
+    "Rare","Epic","Legendary",
+    "NFT","PIXEL","USD (ref.)","userId"
 ]
 
 # ---------- helpers ----------
@@ -232,9 +233,9 @@ def main():
             return None
 
     idx_score = idx("score")
-    idx_pts   = idx("purplestones")
+    idx_pts   = idx("greenstones")
     if idx_pts is None:
-        print("[error] Column 'purpleStones' not found in DB2 result.", file=sys.stderr)
+        print("[error] Column 'greenStones' not found in DB2 result.", file=sys.stderr)
         sys.exit(2)
 
     idx_r = idx("rare")
@@ -250,33 +251,33 @@ def main():
         username = id_to_name.get(uid, uid)
 
         base_score = float(r[idx_score]) if idx_score is not None and r[idx_score] is not None else 0.0
-        purple_stones = int(r[idx_pts]) if r[idx_pts] is not None else 0
+        green_stones = int(r[idx_pts]) if r[idx_pts] is not None else 0
 
         gacha_rare = int(r[idx_r]) if idx_r is not None and r[idx_r] is not None else 0
         gacha_epic = int(r[idx_e]) if idx_e is not None and r[idx_e] is not None else 0
         gacha_leg  = int(r[idx_l]) if idx_l is not None and r[idx_l] is not None else 0
         gacha_total = gacha_rare + gacha_epic + gacha_leg
 
-        mult = float(nft_mult.get(uid, 1.0))  # used for calc
+        mult = float(nft_mult.get(uid, 1.0))
         final_score = int(math.ceil(base_score * mult))
         order_key = ord_map.get(uid, 0)
 
-        records.append((username, final_score, purple_stones, gacha_total,
+        records.append((username, final_score, green_stones, gacha_total,
                         gacha_rare, gacha_epic, gacha_leg,
                         uid, order_key, mult))
 
-    # sort by score desc, then purpleStones, then total gacha, then ord
+    # sort by score desc, then greenStones, then total gacha, then ord
     records.sort(key=lambda x: (x[1], x[2], x[3], x[8]), reverse=True)
     records = records[:TOP_N]
 
     with open(RESULT_CSV, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(RESULT_HEADERS)
-        for i, (username, score, purple_stones, _gacha_total,
+        for i, (username, score, green_stones, _gacha_total,
                 gacha_rare, gacha_epic, gacha_leg,
                 uid, _, mult) in enumerate(records, start=1):
             w.writerow([
-                i, username, score, purple_stones,
+                i, username, score, green_stones,
                 gacha_rare, gacha_epic, gacha_leg,
                 (f"{mult:.1f}" if uid in nft_mult else "-"), "-", "-", uid
             ])
