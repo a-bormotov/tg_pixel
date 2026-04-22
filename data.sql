@@ -1,20 +1,20 @@
 -- data.sql
 -- DB2: events + "vipHistory" (table in same DB as before)
--- Window: 2026-02-25 16:00:00 UTC — 2026-02-27 16:00:00 UTC
--- Resource: purpleStones
--- Score: purpleStones * (1 + rare*0.01 + epic*0.03 + legendary*0.10)
+-- Window: 2026-04-22 14:00:00 UTC — 2026-04-28 14:00:00 UTC
+-- Resource: greenStones
+-- Score: greenStones * (1 + rare*0.01 + epic*0.03 + legendary*0.10)
 -- Gacha: SpendGachaAction output-array, rarity field:
 --   rarity=0 rare, rarity=1 epic, rarity=2 legendary
 -- IMPORTANT (unchanged):
---  - ad series counted inside "packs" after Claim/Unlock with purpleStones
+--  - ad series counted inside "packs" after Claim/Unlock with greenStones
 --  - subscription valid 31 days from purchase,
 --    to_ts = min(from + 31 days, next_from).
 
 WITH
 win AS (
   SELECT
-    TIMESTAMPTZ '2026-03-16 17:00:00+00' AS win_start,
-    TIMESTAMPTZ '2026-03-20 17:00:00+00' AS win_end
+    TIMESTAMPTZ '2026-04-20 14:00:00+00' AS win_start,
+    TIMESTAMPTZ '2026-04-28 14:00:00+00' AS win_end
 ),
 
 /* 1) Events in window (exclude userId starting with 'line') */
@@ -41,8 +41,8 @@ ewin_with_pack AS (
       CASE
         WHEN e."name" IN ('ClaimChallengesAction','UnlockChallengeAction')
          AND (
-           NULLIF(e.payload::jsonb #>> '{output,purpleStones,amount}','') IS NOT NULL
-           OR NULLIF(e.payload::jsonb #>> '{output,rewards,purpleStones,amount}','') IS NOT NULL
+           NULLIF(e.payload::jsonb #>> '{output,greenStones,amount}','') IS NOT NULL
+           OR NULLIF(e.payload::jsonb #>> '{output,rewards,greenStones,amount}','') IS NOT NULL
          )
         THEN 1
         ELSE 0
@@ -60,22 +60,22 @@ points_claim_unlock AS (
   SELECT
     e."userId",
     SUM(
-      COALESCE(NULLIF(e.payload::jsonb #>> '{output,purpleStones,amount}','')::bigint, 0) +
-      COALESCE(NULLIF(e.payload::jsonb #>> '{output,rewards,purpleStones,amount}','')::bigint, 0)
+      COALESCE(NULLIF(e.payload::jsonb #>> '{output,greenStones,amount}','')::bigint, 0) +
+      COALESCE(NULLIF(e.payload::jsonb #>> '{output,rewards,greenStones,amount}','')::bigint, 0)
     ) AS amt
   FROM ewin_with_pack e
   WHERE e."name" IN ('ClaimChallengesAction','UnlockChallengeAction')
   GROUP BY e."userId"
 ),
 
-/* 3) Ads (purpleStones amount from payload) */
+/* 3) Ads (greenStones amount from payload) */
 ads_only AS (
   SELECT
     e."userId",
     e."createdAt",
     e.pack_id,
     COALESCE(
-      NULLIF(e.payload::jsonb #>> '{input,rewards,purpleStones,amount}','')::bigint,
+      NULLIF(e.payload::jsonb #>> '{input,rewards,greenStones,amount}','')::bigint,
       0
     ) AS amt
   FROM ewin_with_pack e
@@ -188,9 +188,9 @@ points_watchads AS (
   GROUP BY "userId"
 ),
 
-/* 11) Total purpleStones (claim/unlock + ads credits) */
+/* 11) Total greenStones (claim/unlock + ads credits) */
 points AS (
-  SELECT "userId", SUM(amt)::bigint AS "purpleStones"
+  SELECT "userId", SUM(amt)::bigint AS "greenStones"
   FROM (
     SELECT "userId", amt FROM points_claim_unlock
     UNION ALL
@@ -230,12 +230,12 @@ gacha AS (
 /* 13) Final score */
 SELECT
   COALESCE(p."userId", g."userId") AS "userId",
-  (COALESCE(p."purpleStones", 0)::numeric * (1 + COALESCE(g.rare,0)*0.01 + COALESCE(g.epic,0)*0.03 + COALESCE(g.legendary,0)*0.10)) AS score,
-  COALESCE(p."purpleStones", 0) AS "purpleStones",
+  (COALESCE(p."greenStones", 0)::numeric * (1 + COALESCE(g.rare,0)*0.01 + COALESCE(g.epic,0)*0.03 + COALESCE(g.legendary,0)*0.10)) AS score,
+  COALESCE(p."greenStones", 0) AS "greenStones",
   COALESCE(g.rare, 0) AS "rare",
   COALESCE(g.epic, 0) AS "epic",
   COALESCE(g.legendary, 0) AS "legendary"
 FROM points p
 FULL OUTER JOIN gacha g
   ON p."userId" = g."userId"
-ORDER BY score DESC, "purpleStones" DESC;
+ORDER BY score DESC, "greenStones" DESC;
