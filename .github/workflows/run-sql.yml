@@ -2,8 +2,6 @@ name: Run NFT greenStones event
 
 on:
   workflow_dispatch: {}
-  schedule:
-    - cron: "5 * * * *"   # hourly at 5th minute (e.g. 00:05, 01:05, etc.)
 
 permissions:
   contents: write
