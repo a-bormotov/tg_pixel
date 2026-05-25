@@ -171,7 +171,7 @@ tbody td { padding:8px; border-bottom:1px solid rgba(255,255,255,0.15); }
   <!-- SCORING -->
   <div class="panel">
     <div class="section-title">SCORING SYSTEM</div>
-    <p>Collect GreenStones to gain score.</p>
+    <p>Collect Gold to gain score.</p>
     <p>Cards from Gacha boost your final result:</p>
     <p>Rare = 1%</p>
     <p>Epic = 3%</p>
@@ -215,7 +215,7 @@ tbody td { padding:8px; border-bottom:1px solid rgba(255,255,255,0.15); }
     <table id="leaderboard">
       <thead>
         <tr>
-          <th>Rank</th><th>Username</th><th>Score</th><th>GreenStones</th>
+          <th>Rank</th><th>Username</th><th>Score</th><th>Gold</th>
           <th>Rare</th><th>Epic</th><th>Legendary</th><th>NFT</th>
           <th>$PIXEL</th><th>USD</th>
         </tr>
@@ -330,7 +330,7 @@ async function renderLeaderboard(){
         rank,
         username: r[idx['username']],
         score: toNumber(r[idx['score']]),
-        greenStones: toNumber(r[idx['greenstones']]||0),
+        gold: toNumber(r[idx['gold']]||0),
         rare: toNumber(r[idx['rare']]||0),
         epic: toNumber(r[idx['epic']]||0),
         legendary: toNumber(r[idx['legendary']]||0),
@@ -343,7 +343,7 @@ async function renderLeaderboard(){
     tbody.innerHTML='';
     for(const row of data){
       const tr=document.createElement('tr');
-      tr.innerHTML=`<td>${row.rank}</td><td>${escapeHTML(row.username)}</td><td>${fmtInt(row.score)}</td><td>${fmtInt(row.greenStones)}</td>
+      tr.innerHTML=`<td>${row.rank}</td><td>${escapeHTML(row.username)}</td><td>${fmtInt(row.score)}</td><td>${fmtInt(row.gold)}</td>
 <td>${fmtInt(row.rare)}</td><td>${fmtInt(row.epic)}</td><td>${fmtInt(row.legendary)}</td><td>${escapeHTML(row.nft)}</td><td>${fmtInt(row.pixel)}</td><td>${fmtUSD(row.usd)}</td>`;
       tbody.appendChild(tr);
     }
