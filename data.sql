@@ -1,6 +1,6 @@
 -- data.sql
 -- DB2: events + "vipHistory" (table in same DB as before)
--- Window: 2026-04-22 14:00:00 UTC — 2026-04-28 14:00:00 UTC
+-- Window: 2026-07-22 17:00:00 UTC — 2026-07-29 17:00:00 UTC
 -- Resource: gold
 -- Score: gold * (1 + rare*0.01 + epic*0.03 + legendary*0.10)
 -- Gacha: SpendGachaAction output-array, rarity field:
@@ -13,8 +13,8 @@
 WITH
 win AS (
   SELECT
-    TIMESTAMPTZ '2026-05-25 16:00:00+00' AS win_start,
-    TIMESTAMPTZ '2026-06-01 16:00:00+00' AS win_end
+    TIMESTAMPTZ '2026-07-22 17:00:00+00' AS win_start,
+    TIMESTAMPTZ '2026-07-29 17:00:00+00' AS win_end
 ),
 
 /* 1) Events in window (exclude userId starting with 'line') */
