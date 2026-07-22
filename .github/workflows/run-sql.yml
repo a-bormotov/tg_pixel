@@ -2,6 +2,8 @@ name: Run NFT gold event
 
 on:
   workflow_dispatch: {}
+  schedule:
+    - cron: "2 * * * *"   # hourly at 2th minute (e.g. 00:02, 01:02, etc.)  
 
 permissions:
   contents: write
