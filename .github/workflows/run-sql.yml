@@ -3,14 +3,19 @@ name: Run NFT gold event
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: "2 * * * *"   # hourly at 2th minute (e.g. 00:02, 01:02, etc.)  
+    - cron: "7 * * * *"   # hourly at minute 7 UTC
 
 permissions:
   contents: write
 
+concurrency:
+  group: nft-gold-event
+  cancel-in-progress: true
+
 jobs:
   run-query:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,7 +39,7 @@ jobs:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
           SSH_USER: ${{ secrets.SSH_USER }}
-          SSH_KEY:  ${{ secrets.SSH_KEY }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
           SSH_KEY_PASSWORD: ${{ secrets.SSH_KEY_PASSWORD }}
 
           # DB1 (users -> usernames)
@@ -51,23 +56,28 @@ jobs:
           DB2_USER: ${{ secrets.DB2_USER }}
           DB2_PASS: ${{ secrets.DB2_PASS }}
 
-          # files
+          # Files
           SQL_FILE: "data.sql"
           USER_SQL_FILE: "user_data.sql"
           OUTPUT_CSV: "raw_data.csv"
           TOP_N: "3000"
+
         run: python run_query.py
 
       - name: Commit CSVs
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          git config user.name  "github-actions[bot]"
+          git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git pull --rebase --autostash origin "${{ github.ref_name }}"
+
           git add raw_data.csv result_data.csv
+
           if git diff --staged --quiet; then
             echo "No changes — skip commit/push."
             exit 0
           fi
+
           git commit -m "Update NFT gold event CSVs [skip ci]"
-          git pull --rebase --autostash origin "${{ github.ref_name }}"
           git push origin HEAD:"${{ github.ref_name }}"
